@@ -19,6 +19,14 @@ TIF = "/Users/flavienmaire/Downloads/thermographie-surface-kirkland/thermographi
 OSM = "data/osm_buildings.json"
 OUT = "data/buildings_scored.geojson"
 
+# Registration correction. The OSM footprints sit ~7 m NW of the roofs as they
+# appear in the thermal raster (measured by maximizing roof-heat under footprints,
+# uniform across all four quadrants). We shift the SAMPLING geometry SE by this
+# amount so each footprint lands on its real roof; the OUTPUT geometry stays at the
+# true OSM position (the displayed thermal overlay is shifted instead, in the app).
+OFF_E_M =  4.0   # metres East  (+X in EPSG:2950)
+OFF_S_M =  6.0   # metres South (-Y in EPSG:2950)
+
 # legend anchors (RGB) ordered worst->best, with a score (higher=better insulation)
 CLASSES = [
     ("57 +",        (173,  9,  0),   0,  "#ad0900"),
@@ -86,7 +94,10 @@ geoms_wgs = []
 for idx,(ring,tags,oid) in enumerate(polys):
     lons = [p[0] for p in ring]; lats=[p[1] for p in ring]
     xs, ys = warp_transform("EPSG:4326", rcrs, lons, lats)
-    poly_native = {"type":"Polygon","coordinates":[list(zip(xs,ys))]}
+    # shift SAMPLING geometry SE onto the real roof (display geometry stays true OSM)
+    xs_s = [x + OFF_E_M for x in xs]
+    ys_s = [y - OFF_S_M for y in ys]
+    poly_native = {"type":"Polygon","coordinates":[list(zip(xs_s,ys_s))]}
     shapes.append((poly_native, idx+1))   # id 0 reserved for background
     geoms_wgs.append({"type":"Polygon","coordinates":[ [[lo,la] for lo,la in ring] ]})
 

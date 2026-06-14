@@ -78,7 +78,9 @@
 </div>
 
 <script>
-const B = {"west":-73.91761630951575,"south":45.43500513231517,"east":-73.82874104768744,"north":45.470703881940835};
+// Overlay corners shifted ~4 m W / 6 m N so the thermal roofs line up with the
+// OSM footprints and basemap (corrects the source raster's ~7 m SE registration).
+const B = {"west":-73.91766753211867,"south":45.43505903098567,"east":-73.82879227029036,"north":45.470757780611336};
 const CLASS_COLORS = {"57 +":"#ad0900","51-56":"#d62f29","45-50":"#ed7552","39-44":"#fab884","33-38":"#ffffbf","27-32 ref":"#bfc4c0","<=26":"#6a91ba"};
 const GRADE_COLOR = {A:"#1eaa46",B:"#86c33b",C:"#dcdc3c",D:"#e8a02e",E:"#dc5a28",F:"#dc2828"};
 
