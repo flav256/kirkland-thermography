@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Kirkland — Surface Thermography & Insulation Scores</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#1b1f24" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Kirkland Thermo" />
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+<link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<style>
+  :root { --panel:#1b1f24; --ink:#e8ecf1; --mut:#9aa6b2; }
+  html,body { margin:0; height:100%; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+  #map { position:absolute; inset:0; }
+  .panel { position:absolute; z-index:5; background:rgba(27,31,36,.92); color:var(--ink);
+    border-radius:12px; padding:14px 16px; box-shadow:0 6px 22px rgba(0,0,0,.35); backdrop-filter:blur(6px); }
+  #ctrl { top:12px; left:12px; width:248px; }
+  #ctrl h1 { font-size:15px; margin:0 0 2px; }
+  #ctrl .sub { font-size:11px; color:var(--mut); margin-bottom:12px; line-height:1.4; }
+  .row { display:flex; align-items:center; gap:8px; margin:8px 0; font-size:13px; }
+  .row input[type=range]{ flex:1; }
+  label.tg { display:flex; align-items:center; gap:8px; font-size:13px; margin:7px 0; cursor:pointer; }
+  .sec { font-size:11px; text-transform:uppercase; letter-spacing:.6px; color:var(--mut); margin:12px 0 4px; }
+  #legend { bottom:12px; left:12px; width:210px; font-size:12px; }
+  #legend .item { display:flex; align-items:center; gap:8px; margin:4px 0; }
+  #legend .sw { width:16px; height:16px; border-radius:3px; border:1px solid rgba(255,255,255,.25); }
+  .pop h3 { margin:0 0 4px; font-size:14px; }
+  .pop .score { font-size:26px; font-weight:700; }
+  .pop .grade { display:inline-block; padding:1px 8px; border-radius:6px; color:#fff; font-weight:700; margin-left:6px; }
+  .pop table { border-collapse:collapse; margin-top:6px; font-size:11px; width:100%; }
+  .pop td { padding:1px 4px; }
+  .pop .bar { height:8px; border-radius:2px; }
+  .maplibregl-popup-content { background:#1b1f24; color:#e8ecf1; border-radius:10px; padding:12px 14px; }
+  .maplibregl-popup-tip { border-top-color:#1b1f24!important; border-bottom-color:#1b1f24!important; }
+  #stats { font-size:11px; color:var(--mut); margin-top:8px; line-height:1.5; }
+  a { color:#7fb2ff; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<div id="ctrl" class="panel">
+  <h1>Kirkland Thermography</h1>
+  <div class="sub">2016 daytime aerial surface temperature (Ville de Montréal open data). Buildings scored by the surface colour under their roof — higher = cooler = better insulation.</div>
+
+  <div class="sec">Layers</div>
+  <label class="tg"><input type="checkbox" id="t-thermal" checked> Thermal overlay</label>
+  <div class="row">opacity <input type="range" id="o-thermal" min="0" max="100" value="70"></div>
+  <label class="tg"><input type="checkbox" id="t-build" checked> Building scores</label>
+  <div class="row">opacity <input type="range" id="o-build" min="0" max="100" value="80"></div>
+
+  <div class="sec">Filter by grade</div>
+  <div class="row" style="flex-wrap:wrap;gap:4px" id="grades"></div>
+
+  <div id="stats">loading…</div>
+</div>
+
+<div id="legend" class="panel">
+  <div class="sec" style="margin-top:0">Insulation score</div>
+  <div class="item"><span class="sw" style="background:#1eaa46"></span> 85–100 · A (excellent)</div>
+  <div class="item"><span class="sw" style="background:#86c33b"></span> 70–84 · B</div>
+  <div class="item"><span class="sw" style="background:#dcdc3c"></span> 55–69 · C</div>
+  <div class="item"><span class="sw" style="background:#e8a02e"></span> 40–54 · D</div>
+  <div class="item"><span class="sw" style="background:#dc5a28"></span> 25–39 · E</div>
+  <div class="item"><span class="sw" style="background:#dc2828"></span> 0–24 · F (poor)</div>
+  <div class="sec">Thermal (surface °C)</div>
+  <div class="item"><span class="sw" style="background:#6a91ba"></span> ≤26 · coolest</div>
+  <div class="item"><span class="sw" style="background:#bfc4c0"></span> 27–32 (reference)</div>
+  <div class="item"><span class="sw" style="background:#ffffbf"></span> 33–38</div>
+  <div class="item"><span class="sw" style="background:#fab884"></span> 39–44</div>
+  <div class="item"><span class="sw" style="background:#ed7552"></span> 45–50</div>
+  <div class="item"><span class="sw" style="background:#d62f29"></span> 51–56</div>
+  <div class="item"><span class="sw" style="background:#ad0900"></span> ≥57 · hottest</div>
+</div>
+
+<script>
+const B = {"west":-73.91761630951575,"south":45.43500513231517,"east":-73.82874104768744,"north":45.470703881940835};
+const CLASS_COLORS = {"57 +":"#ad0900","51-56":"#d62f29","45-50":"#ed7552","39-44":"#fab884","33-38":"#ffffbf","27-32 ref":"#bfc4c0","<=26":"#6a91ba"};
+const GRADE_COLOR = {A:"#1eaa46",B:"#86c33b",C:"#dcdc3c",D:"#e8a02e",E:"#dc5a28",F:"#dc2828"};
+
+const map = new maplibregl.Map({
+  container:'map',
+  style:{
+    version:8,
+    glyphs:"https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
+    sources:{
+      carto:{ type:"raster", tiles:[
+        "https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
+        "https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
+        "https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"],
+        tileSize:256, attribution:"© OpenStreetMap, © CARTO · Thermography: Ville de Montréal (2016)"}
+    },
+    layers:[{id:"base",type:"raster",source:"carto"}]
+  },
+  center:[(B.west+B.east)/2,(B.south+B.north)/2],
+  zoom:12.6
+});
+map.addControl(new maplibregl.NavigationControl({visualizePitch:false}),'top-right');
+map.addControl(new maplibregl.ScaleControl({maxWidth:120,unit:'metric'}),'bottom-right');
+
+map.on('load', async () => {
+  map.addSource('thermal',{ type:'image',
+    url:'data/overlay_jour.png',
+    coordinates:[[B.west,B.north],[B.east,B.north],[B.east,B.south],[B.west,B.south]] });
+  map.addLayer({id:'thermal',type:'raster',source:'thermal',paint:{'raster-opacity':0.7,'raster-resampling':'nearest'}});
+
+  const gj = await (await fetch('data/buildings_scored.geojson')).json();
+  map.addSource('buildings',{type:'geojson',data:gj});
+  map.addLayer({id:'buildings-fill',type:'fill',source:'buildings',
+    paint:{'fill-color':['get','color'],'fill-opacity':0.8,'fill-outline-color':'rgba(0,0,0,0.25)'}});
+  map.addLayer({id:'buildings-hi',type:'line',source:'buildings',
+    paint:{'line-color':'#00e5ff','line-width':2.5},filter:['==','osm_id',-1]});
+
+  // stats
+  const sc = gj.features.map(f=>f.properties.score);
+  const avg = (sc.reduce((a,b)=>a+b,0)/sc.length).toFixed(1);
+  document.getElementById('stats').innerHTML =
+    `<b>${sc.length.toLocaleString()}</b> buildings scored · average <b>${avg}</b>/100<br>`+
+    `Click any building for its breakdown.`;
+
+  // grade filter chips
+  const gradesDiv = document.getElementById('grades');
+  const active = new Set(['A','B','C','D','E','F']);
+  ['A','B','C','D','E','F'].forEach(g=>{
+    const b=document.createElement('button');
+    b.textContent=g; b.style.cssText=`flex:1;min-width:28px;border:0;border-radius:6px;padding:4px 0;cursor:pointer;color:#111;font-weight:700;background:${GRADE_COLOR[g]}`;
+    b.onclick=()=>{ if(active.has(g)){active.delete(g);b.style.opacity=.3;} else {active.add(g);b.style.opacity=1;} applyFilter(); };
+    gradesDiv.appendChild(b);
+  });
+  function applyFilter(){
+    map.setFilter('buildings-fill',['in',['get','grade'],['literal',[...active]]]);
+  }
+
+  // interactions
+  const popup = new maplibregl.Popup({closeButton:true,maxWidth:'300px'});
+  map.on('mousemove','buildings-fill',e=>{ map.getCanvas().style.cursor='pointer';
+    map.setFilter('buildings-hi',['==','osm_id',e.features[0].properties.osm_id]); });
+  map.on('mouseleave','buildings-fill',()=>{ map.getCanvas().style.cursor='';
+    map.setFilter('buildings-hi',['==','osm_id',-1]); });
+  map.on('click','buildings-fill',e=>{
+    const p=e.features[0].properties;
+    const cc=typeof p.class_counts==='string'?JSON.parse(p.class_counts):p.class_counts;
+    const tot=Object.values(cc).reduce((a,b)=>a+b,0)||1;
+    let rows='';
+    ["<=26","27-32 ref","33-38","39-44","45-50","51-56","57 +"].forEach(k=>{
+      const v=cc[k]||0; if(!v) return;
+      const pct=(100*v/tot).toFixed(0);
+      rows+=`<tr><td><span class="sw" style="display:inline-block;width:11px;height:11px;border-radius:2px;background:${CLASS_COLORS[k]}"></span></td>`+
+            `<td>${k}°C</td><td><div class="bar" style="width:${Math.max(4,pct)}px;background:${CLASS_COLORS[k]}"></div></td><td>${pct}%</td></tr>`;
+    });
+    const title = p.addr || p.name || ('Building '+p.osm_id);
+    popup.setLngLat(e.lngLat).setHTML(
+      `<div class="pop"><h3>${title}</h3>`+
+      `<span class="score" style="color:${p.color}">${p.score}</span><span style="color:#9aa6b2">/100</span>`+
+      `<span class="grade" style="background:${GRADE_COLOR[p.grade]}">${p.grade}</span>`+
+      `<table>${rows}</table>`+
+      `<div style="font-size:10px;color:#9aa6b2;margin-top:6px">${p.valid_px} valid px · roof surface-temp mix</div></div>`
+    ).addTo(map);
+  });
+
+  // toggles
+  const bind=(cb,layer)=>document.getElementById(cb).onchange=e=>
+    map.setLayoutProperty(layer,'visibility',e.target.checked?'visible':'none');
+  bind('t-thermal','thermal'); bind('t-build','buildings-fill');
+  document.getElementById('o-thermal').oninput=e=>map.setPaintProperty('thermal','raster-opacity',e.target.value/100);
+  document.getElementById('o-build').oninput=e=>map.setPaintProperty('buildings-fill','fill-opacity',e.target.value/100);
+});
+
+// PWA: register service worker for offline use + home-screen install.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('service-worker.js').catch(()=>{}));
+}
+</script>
+</body>
+</html>
