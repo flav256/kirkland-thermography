@@ -17,8 +17,12 @@ Status legend: ✅ done · 🚧 in progress · ⬜ planned · 💡 idea
 - ✅ **Image registry** (`data/overlays.json`) + ☰ drawer log with per-image
   visibility/opacity/references, and a runtime image **loader**
 - ✅ GitHub Pages **deploy workflow** (`.github/workflows/deploy-pages.yml`)
+- ✅ **Processing Studio** (`studio.html`): in-browser TIFF upload → align →
+  fetch OSM footprints → classify + score → review → export (geojson/png/registry entry)
 
 ## Next (high value)
+- 🚧 **Supabase backend** (Phase 2): persist uploaded TIFFs + validated results
+  (Storage + Postgres/PostGIS + auth); main map + studio read/write from Supabase.
 - ⬜ **Coverage expansion**: ingest neighbouring boroughs' 2016 day rasters and a
   wider OSM extract; re-run scoring (pipeline already supports `--tif` ×N) and
   add the new overlays to `data/overlays.json`.

@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Kirkland Thermography — Processing Studio</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#1b1f24" />
+<link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/geotiff@2.1.3/dist-browser/geotiff.js"></script>
+<script src="https://unpkg.com/proj4@2.11.0/dist/proj4.js"></script>
+<style>
+  :root { --panel:#1b1f24; --panel-2:#242a31; --ink:#e8ecf1; --mut:#9aa6b2; --line:rgba(255,255,255,.10); --accent:#7fb2ff; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; color:var(--ink); }
+  #map { position:absolute; inset:0 0 0 360px; }
+  #side { position:absolute; top:0; left:0; bottom:0; width:360px; background:var(--panel); border-right:1px solid var(--line);
+    overflow:auto; padding:16px; }
+  h1 { font-size:16px; margin:0 0 2px; }
+  .sub { font-size:11px; color:var(--mut); margin:0 0 14px; line-height:1.5; }
+  .step { border:1px solid var(--line); border-radius:12px; padding:12px; margin-bottom:12px; background:var(--panel-2); }
+  .step h2 { font-size:12px; text-transform:uppercase; letter-spacing:.6px; color:var(--mut); margin:0 0 10px; }
+  label.fld { display:flex; flex-direction:column; gap:4px; font-size:11px; color:var(--mut); margin:6px 0; }
+  input[type=text], input[type=number] { padding:7px 9px; border-radius:8px; border:1px solid var(--line); background:var(--panel); color:var(--ink); font-size:13px; }
+  input[type=file] { font-size:12px; color:var(--ink); }
+  button { font-family:inherit; cursor:pointer; }
+  .btn { background:var(--accent); color:#06203f; border:0; border-radius:9px; padding:9px 12px; font-weight:700; font-size:13px; width:100%; }
+  .btn:disabled { opacity:.4; cursor:default; }
+  .btn.sec { background:none; border:1px solid var(--line); color:var(--accent); }
+  .pad { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin:8px 0; }
+  .pad button { background:var(--panel); border:1px solid var(--line); color:var(--ink); border-radius:8px; padding:8px 0; font-size:14px; }
+  .pad .lbl { display:flex; align-items:center; justify-content:center; font-size:10px; color:var(--mut); }
+  .row { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--mut); margin:8px 0; }
+  .row input[type=range]{ flex:1; accent-color:var(--accent); }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  #log { font-size:11px; color:var(--mut); line-height:1.6; white-space:pre-wrap; max-height:160px; overflow:auto;
+    background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:8px; margin-top:6px; }
+  .stat { font-size:12px; line-height:1.6; }
+  .stat b { color:var(--ink); }
+  .muted { color:var(--mut); font-size:11px; }
+  a { color:var(--accent); }
+  .pill { display:inline-block; font-size:10px; padding:2px 7px; border-radius:6px; background:#3a2f12; color:#f0c36b; }
+  textarea { width:100%; min-height:90px; background:var(--panel); color:var(--ink); border:1px solid var(--line); border-radius:8px; font-size:11px; font-family:ui-monospace,Menlo,Consolas,monospace; padding:8px; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div id="side">
+  <h1>Processing Studio <span class="pill">experimental</span></h1>
+  <p class="sub">Upload a surface-thermography GeoTIFF, align it, score the buildings under it, then export. Runs entirely in your browser. <a href="index.html">← back to map</a></p>
+
+  <div class="step">
+    <h2>1 · Load GeoTIFF</h2>
+    <input type="file" id="file" accept=".tif,.tiff,image/tiff" />
+    <label class="fld" style="margin-top:8px"><span>Source CRS (EPSG)</span>
+      <input type="text" id="crs" value="2950" /></label>
+    <div class="muted">2950 = NAD83 / MTM zone 8 (Montréal). The CRS is read from the file when present.</div>
+  </div>
+
+  <div class="step" id="step-align" style="display:none">
+    <h2>2 · Align (positions)</h2>
+    <div class="muted">Nudge the image so roofs sit on the basemap/footprints.</div>
+    <div class="pad">
+      <span class="lbl"></span><button data-nudge="n">▲</button><span class="lbl"></span>
+      <button data-nudge="w">◀</button><span class="lbl" id="step-lbl">1 m</span><button data-nudge="e">▶</button>
+      <span class="lbl"></span><button data-nudge="s">▼</button><span class="lbl"></span>
+    </div>
+    <div class="row">step <input type="range" id="nudge-step" min="1" max="20" value="1"></div>
+    <div class="grid2">
+      <label class="fld"><span>East offset (m)</span><input type="number" id="off-e" value="-4" step="0.5"></label>
+      <label class="fld"><span>North offset (m)</span><input type="number" id="off-n" value="6" step="0.5"></label>
+    </div>
+    <div class="row">opacity <input type="range" id="opacity" min="0" max="100" value="80"></div>
+  </div>
+
+  <div class="step" id="step-score" style="display:none">
+    <h2>3 · Score buildings</h2>
+    <button class="btn sec" id="fetch-osm">① Fetch OSM footprints (Overpass)</button>
+    <div class="row">max palette dist <input type="range" id="maxdist" min="20" max="160" value="80"><span id="maxdist-v">80</span></div>
+    <button class="btn" id="score" disabled style="margin-top:6px">② Score under footprints</button>
+    <div id="stats" class="stat" style="margin-top:10px"></div>
+  </div>
+
+  <div class="step" id="step-export" style="display:none">
+    <h2>4 · Review &amp; export</h2>
+    <div class="muted">Click a building on the map to inspect its score. When the alignment and scores look right:</div>
+    <label class="fld" style="margin-top:8px"><span>Title</span><input type="text" id="ex-title" placeholder="Area — 2016 (day)"></label>
+    <div class="grid2" style="margin-top:6px">
+      <button class="btn sec" id="ex-geojson">⬇ buildings.geojson</button>
+      <button class="btn sec" id="ex-png">⬇ overlay.png</button>
+    </div>
+    <div class="muted" style="margin-top:8px">overlays.json entry (paste into <code>data/overlays.json</code>):</div>
+    <textarea id="ex-json" readonly></textarea>
+  </div>
+
+  <div class="step">
+    <h2>Log</h2>
+    <div id="log">ready.</div>
+  </div>
+</div>
+
+<script>
+// ---- legend anchors (mirror score_buildings.py) ----
+const CLASSES = [
+  ["57 +",      [173,9,0],     0,  "#ad0900"],
+  ["51-56",     [214,47,41],   15, "#d62f29"],
+  ["45-50",     [237,117,82],  30, "#ed7552"],
+  ["39-44",     [250,184,132], 46, "#fab884"],
+  ["33-38",     [255,255,191], 62, "#ffffbf"],
+  ["27-32 ref", [191,196,192], 78, "#bfc4c0"],
+  ["<=26",      [106,145,186], 100,"#6a91ba"],
+];
+const LABELS = CLASSES.map(c=>c[0]);
+const N = CLASSES.length;
+const ANCHORS = CLASSES.map(c=>c[1]).concat([[255,255,255],[0,0,0]]);
+const SCORES  = CLASSES.map(c=>c[2]);
+const GRADE_COLOR = {A:"#1eaa46",B:"#86c33b",C:"#dcdc3c",D:"#e8a02e",E:"#dc5a28",F:"#dc2828"};
+proj4.defs("EPSG:2950","+proj=tmerc +lat_0=0 +lon_0=-73.5 +k=0.9999 +x_0=304800 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs");
+
+function grade(s){ return s>=85?"A":s>=70?"B":s>=55?"C":s>=40?"D":s>=25?"E":"F"; }
+function ramp(s){ const t=Math.max(0,Math.min(1,s/100));
+  const r=Math.round(220*(1-t)+30*t),g=Math.round(40*(1-t)+170*t),b=Math.round(40*(1-t)+70*t);
+  return "#"+[r,g,b].map(v=>v.toString(16).padStart(2,"0")).join(""); }
+const log = (m)=>{ const el=document.getElementById('log'); el.textContent += "\n"+m; el.scrollTop=el.scrollHeight; };
+
+// ---- map ----
+const map = new maplibregl.Map({ container:'map', style:{ version:8,
+  glyphs:"https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
+  sources:{ carto:{ type:"raster", tiles:[
+    "https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
+    "https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"],
+    tileSize:256, attribution:"© OpenStreetMap, © CARTO" } },
+  layers:[{id:"base",type:"raster",source:"carto"}] },
+  center:[-73.87,45.45], zoom:12 });
+map.addControl(new maplibregl.NavigationControl(),'top-right');
+
+// ---- studio state ----
+const S = {
+  width:0, height:0, R:null, G:null, Bb:null,   // raster bands
+  origin:null, res:null,                          // geotransform (in source CRS)
+  crs:"EPSG:2950", pngURL:null, dispBounds:null,  // display overlay
+  buildings:null, scored:null, cls:null,
+};
+
+// ===== Step 1: load TIFF =====
+document.getElementById('file').onchange = async (e)=>{
+  const f=e.target.files[0]; if(!f) return;
+  try{
+    log("reading "+f.name+" …");
+    const buf=await f.arrayBuffer();
+    const tiff=await GeoTIFF.fromArrayBuffer(buf);
+    const img=await tiff.getImage();
+    S.width=img.getWidth(); S.height=img.getHeight();
+    S.origin=img.getOrigin();        // [x0,y0] top-left in CRS units
+    S.res=img.getResolution();       // [resX, resY(neg)]
+    const epsg=(img.geoKeys&&img.geoKeys.ProjectedCSTypeGeoKey)||document.getElementById('crs').value;
+    S.crs="EPSG:"+epsg; document.getElementById('crs').value=epsg;
+    if(!proj4.defs(S.crs)){ log("⚠ unknown CRS "+S.crs+" — using EPSG:2950 def"); S.crs="EPSG:2950"; }
+    log(`size ${S.width}×${S.height}px · CRS ${S.crs}`);
+    if(S.width*S.height>40e6) log("⚠ very large raster — scoring may be slow.");
+
+    const rasters=await img.readRasters({interleave:false});
+    if(rasters.length<3){ log("✖ expected an RGB image (≥3 bands). Got "+rasters.length+"."); return; }
+    S.R=rasters[0]; S.G=rasters[1]; S.Bb=rasters[2];
+
+    buildOverlayPNG();
+    renderOverlay();
+    document.getElementById('step-align').style.display='';
+    document.getElementById('step-score').style.display='';
+    document.getElementById('step-export').style.display='';
+    map.fitBounds(bbox4326(), {padding:30});
+    log("loaded. Align, then fetch footprints + score.");
+  }catch(err){ log("✖ "+err.message); console.error(err); }
+};
+
+function buildOverlayPNG(){
+  const {width:w,height:h,R,G,Bb}=S;
+  const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+  const ctx=cv.getContext('2d'); const id=ctx.createImageData(w,h); const d=id.data;
+  for(let i=0,j=0;i<w*h;i++,j+=4){ d[j]=R[i]; d[j+1]=G[i]; d[j+2]=Bb[i];
+    d[j+3]=(R[i]===255&&G[i]===255&&Bb[i]===255)?0:255; }   // white = transparent no-data
+  ctx.putImageData(id,0,0);
+  if(S.pngURL) URL.revokeObjectURL(S.pngURL);
+  S.pngCanvas=cv; S.pngURL=cv.toDataURL('image/png');
+}
+
+// pixel(col,row) -> source CRS (x,y), with display offset applied
+function offsets(){ return [parseFloat(document.getElementById('off-e').value)||0,
+                            parseFloat(document.getElementById('off-n').value)||0]; }
+function cornersCRS(){
+  const [x0,y0]=S.origin, [rx,ry]=S.res; const w=S.width,h=S.height;
+  const [dE,dN]=offsets();
+  // image moved by (dE east, dN north) for display
+  return [ [x0+dE, y0+dN], [x0+w*rx+dE, y0+dN], [x0+w*rx+dE, y0+h*ry+dN], [x0+dE, y0+h*ry+dN] ];
+}
+function toLL([x,y]){ const r=proj4(S.crs,"EPSG:4326",[x,y]); return [r[0],r[1]]; }
+function bbox4326(){ const c=cornersCRS().map(toLL);
+  const lons=c.map(p=>p[0]), lats=c.map(p=>p[1]);
+  return [[Math.min(...lons),Math.min(...lats)],[Math.max(...lons),Math.max(...lats)]]; }
+
+function renderOverlay(){
+  const c=cornersCRS().map(toLL);   // TL,TR,BR,BL
+  S.dispBounds=bbox4326();
+  if(map.getLayer('studio-img')) map.removeLayer('studio-img');
+  if(map.getSource('studio-img')) map.removeSource('studio-img');
+  map.addSource('studio-img',{type:'image', url:S.pngURL, coordinates:c});
+  const before=map.getLayer('b-fill')?'b-fill':undefined;
+  map.addLayer({id:'studio-img',type:'raster',source:'studio-img',
+    paint:{'raster-opacity':document.getElementById('opacity').value/100,'raster-resampling':'nearest'}}, before);
+}
+
+// ===== Step 2: align =====
+document.querySelectorAll('[data-nudge]').forEach(btn=>btn.onclick=()=>{
+  const step=parseFloat(document.getElementById('nudge-step').value);
+  const k=btn.dataset.nudge;
+  const eEl=document.getElementById('off-e'), nEl=document.getElementById('off-n');
+  if(k==='e') eEl.value=(+eEl.value+step).toFixed(1);
+  if(k==='w') eEl.value=(+eEl.value-step).toFixed(1);
+  if(k==='n') nEl.value=(+nEl.value+step).toFixed(1);
+  if(k==='s') nEl.value=(+nEl.value-step).toFixed(1);
+  renderOverlay();
+});
+document.getElementById('nudge-step').oninput=e=>document.getElementById('step-lbl').textContent=e.target.value+" m";
+['off-e','off-n'].forEach(id=>document.getElementById(id).onchange=renderOverlay);
+document.getElementById('opacity').oninput=e=>{ if(map.getLayer('studio-img')) map.setPaintProperty('studio-img','raster-opacity',e.target.value/100); };
+document.getElementById('maxdist').oninput=e=>document.getElementById('maxdist-v').textContent=e.target.value;
+
+// ===== Step 3a: fetch OSM footprints for the raster bbox =====
+document.getElementById('fetch-osm').onclick=async ()=>{
+  try{
+    const [[w,s],[e,n]]=bbox4326();
+    log("fetching OSM footprints from Overpass …");
+    const q=`[out:json][timeout:90];(way["building"](${s},${w},${n},${e});`+
+            `relation["building"]["type"="multipolygon"](${s},${w},${n},${e}););out geom;`;
+    const res=await fetch("https://overpass-api.de/api/interpreter",{method:"POST",body:q});
+    if(!res.ok) throw new Error("Overpass HTTP "+res.status);
+    const data=await res.json();
+    S.buildings=parseOSM(data);
+    log("footprints: "+S.buildings.length);
+    document.getElementById('score').disabled = S.buildings.length===0;
+  }catch(err){ log("✖ Overpass: "+err.message); }
+};
+function parseOSM(data){
+  const polys=[];
+  const ringOf=g=>g.map(p=>[p.lon,p.lat]);
+  for(const el of data.elements){
+    if(el.type==="way" && el.geometry && el.geometry.length>=4){
+      const r=ringOf(el.geometry); if(r[0][0]!==r[r.length-1][0]||r[0][1]!==r[r.length-1][1]) r.push(r[0]);
+      polys.push({ring:r, tags:el.tags||{}, id:el.id});
+    } else if(el.type==="relation" && el.members){
+      for(const m of el.members) if(m.role==="outer" && m.geometry && m.geometry.length>=4){
+        const r=ringOf(m.geometry); if(r[0][0]!==r[r.length-1][0]||r[0][1]!==r[r.length-1][1]) r.push(r[0]);
+        polys.push({ring:r, tags:el.tags||{}, id:el.id});
+      }
+    }
+  }
+  return polys;
+}
+
+// ===== Step 3b: classify + rasterize footprints + aggregate =====
+document.getElementById('score').onclick=()=>{ setTimeout(runScore,30); log("scoring …"); };
+function runScore(){
+  const {width:w,height:h,R,G,Bb}=S;
+  const npx=w*h;
+  // classify pixels
+  const maxd=parseFloat(document.getElementById('maxdist').value); const thr2=maxd*maxd;
+  const cls=new Int8Array(npx);
+  for(let i=0;i<npx;i++){
+    const r=R[i],g=G[i],b=Bb[i]; let best=-1,bd=1e9,sm=1e9;
+    for(let a=0;a<ANCHORS.length;a++){
+      const dr=r-ANCHORS[a][0],dg=g-ANCHORS[a][1],db=b-ANCHORS[a][2]; const dd=dr*dr+dg*dg+db*db;
+      if(dd<bd){bd=dd;best=a;} if(a<N && dd<sm) sm=dd;
+    }
+    cls[i]=(best<N && sm<=thr2)?best:-1;
+  }
+  S.cls=cls;
+  // rasterize footprints to building-id via canvas (id encoded as colour)
+  const [dE,dN]=offsets(); const [x0,y0]=S.origin,[rx,ry]=S.res;
+  const cv=document.createElement('canvas'); cv.width=w; cv.height=h; const ctx=cv.getContext('2d',{willReadFrequently:true});
+  ctx.clearRect(0,0,w,h);
+  const B=S.buildings;
+  for(let bi=0;bi<B.length;bi++){
+    const id=bi+1; const col=`rgb(${id&255},${(id>>8)&255},${(id>>16)&255})`;
+    ctx.fillStyle=col; ctx.beginPath();
+    const ring=B[bi].ring;
+    for(let k=0;k<ring.length;k++){
+      const xy=proj4("EPSG:4326",S.crs,ring[k]);            // lon/lat -> source CRS
+      const col_=((xy[0]-dE)-x0)/rx, row_=((xy[1]-dN)-y0)/ry;  // sample where image now sits
+      if(k===0) ctx.moveTo(col_,row_); else ctx.lineTo(col_,row_);
+    }
+    ctx.closePath(); ctx.fill();
+  }
+  const idData=ctx.getImageData(0,0,w,h).data;
+  // aggregate
+  const nb=B.length;
+  const sum=new Float64Array(nb+1), cnt=new Int32Array(nb+1), tot=new Int32Array(nb+1);
+  const cc=new Int32Array((nb+1)*N);
+  for(let i=0,j=0;i<npx;i++,j+=4){
+    const id=idData[j]+idData[j+1]*256+idData[j+2]*65536;
+    if(id<1||id>nb) continue; tot[id]++;
+    const c=cls[i]; if(c<0) continue;
+    sum[id]+=SCORES[c]; cnt[id]++; cc[id*N+c]++;
+  }
+  // build features
+  const feats=[]; const scores=[]; const gc={};
+  for(let bi=0;bi<nb;bi++){
+    const id=bi+1, n=cnt[id]; if(n<6) continue;
+    const sc=sum[id]/n; const gr=grade(sc);
+    const counts={}; for(let c=0;c<N;c++) counts[LABELS[c]]=cc[id*N+c];
+    const t=B[bi].tags;
+    feats.push({type:"Feature",geometry:{type:"Polygon",coordinates:[B[bi].ring]},properties:{
+      osm_id:B[bi].id, score:Math.round(sc*10)/10, grade:gr, color:ramp(sc),
+      valid_px:n, total_px:tot[id],
+      name:t.name||t["addr:housenumber"]||"",
+      addr:((t["addr:housenumber"]||"")+" "+(t["addr:street"]||"")).trim(),
+      class_counts:counts }});
+    scores.push(sc); gc[gr]=(gc[gr]||0)+1;
+  }
+  S.scored={type:"FeatureCollection",features:feats};
+  drawBuildings();
+  const avg=scores.length?(scores.reduce((a,b)=>a+b,0)/scores.length):0;
+  document.getElementById('stats').innerHTML=
+    `<b>${feats.length}</b> buildings scored · avg <b>${avg.toFixed(1)}</b>/100<br>`+
+    `grades: ${Object.keys(gc).sort().map(g=>g+":"+gc[g]).join("  ")}`;
+  log(`scored ${feats.length} buildings (avg ${avg.toFixed(1)}).`);
+  fillExport();
+}
+
+function drawBuildings(){
+  if(map.getLayer('b-hi')) map.removeLayer('b-hi');
+  if(map.getLayer('b-fill')) map.removeLayer('b-fill');
+  if(map.getSource('b')) map.removeSource('b');
+  map.addSource('b',{type:'geojson',data:S.scored});
+  map.addLayer({id:'b-fill',type:'fill',source:'b',paint:{'fill-color':['get','color'],'fill-opacity':0.8,'fill-outline-color':'rgba(0,0,0,0.25)'}});
+  map.addLayer({id:'b-hi',type:'line',source:'b',paint:{'line-color':'#00e5ff','line-width':2.5},filter:['==','osm_id',-1]});
+}
+const popup=new maplibregl.Popup({closeButton:true});
+map.on('click','b-fill',e=>{
+  const p=e.features[0].properties;
+  map.setFilter('b-hi',['==','osm_id',p.osm_id]);
+  popup.setLngLat(e.lngLat).setHTML(
+    `<div style="color:#111;font-family:sans-serif"><b>${p.addr||p.name||('Building '+p.osm_id)}</b><br>`+
+    `<span style="font-size:22px;font-weight:700;color:${p.color}">${p.score}</span>/100 · grade ${p.grade}<br>`+
+    `<span style="font-size:11px;color:#555">${p.valid_px} valid px</span></div>`).addTo(map);
+});
+
+// ===== Step 4: export =====
+function fillExport(){
+  const [[w,s],[e,n]]=S.dispBounds;
+  const title=document.getElementById('ex-title').value||"Area — 2016";
+  document.getElementById('ex-json').value=JSON.stringify({
+    id:"img-"+Date.now(), title, file:"data/overlay_NEW.png",
+    bounds:{west:+w.toFixed(7),south:+s.toFixed(7),east:+e.toFixed(7),north:+n.toFixed(7)},
+    source:"", date:"", opacity:0.7, visible:true
+  },null,2);
+}
+document.getElementById('ex-title').oninput=fillExport;
+function download(name,blob){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000); }
+document.getElementById('ex-geojson').onclick=()=>{ if(!S.scored){log("score first.");return;}
+  download("buildings_scored.geojson", new Blob([JSON.stringify(S.scored)],{type:"application/json"})); };
+document.getElementById('ex-png').onclick=()=>{ if(!S.pngCanvas){log("load a tiff first.");return;}
+  S.pngCanvas.toBlob(b=>download("overlay_NEW.png",b),"image/png"); };
+</script>
+</body>
+</html>
