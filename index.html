@@ -667,7 +667,15 @@ installBtn.onclick=async()=>{
 window.addEventListener('appinstalled',()=>{ installBtn.style.display='none'; toast('Installed — find it on your home screen.'); });
 
 // PWA: register service worker for offline use + home-screen install.
+// Auto-reload once when an updated worker takes control, so deploys show up
+// without a manual hard-refresh (guarded so first install doesn't loop).
 if ('serviceWorker' in navigator) {
+  if (navigator.serviceWorker.controller) {
+    let refreshing=false;
+    navigator.serviceWorker.addEventListener('controllerchange',()=>{
+      if(refreshing) return; refreshing=true; location.reload();
+    });
+  }
   window.addEventListener('load', () => navigator.serviceWorker.register('service-worker.js').catch(()=>{}));
 }
 </script>

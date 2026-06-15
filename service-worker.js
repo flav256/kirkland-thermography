@@ -1,6 +1,6 @@
 // Kirkland Thermography PWA — offline-capable service worker.
 // Bump CACHE on any data/app change to force a refresh.
-const CACHE = 'kirkland-thermo-v4';
+const CACHE = 'kirkland-thermo-v5';
 
 // Same-origin app shell + data. These are precached so the app works fully
 // offline once it has been opened online once.
@@ -36,6 +36,20 @@ self.addEventListener('fetch', (e) => {
 
   // Geocoder (Nominatim): always network, never cache — addresses must be live.
   if (/nominatim\.openstreetmap\.org/.test(url.host)) return;
+
+  // HTML navigations: network-first, so the newest app shell always wins when
+  // online (prevents being stuck on a stale cached page). Falls back to cache
+  // offline. This is the key fix for "I still see the old version".
+  if (req.mode === 'navigate' || req.destination === 'document') {
+    e.respondWith(
+      fetch(req).then((res) => {
+        const copy = res.clone();
+        caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
+        return res;
+      }).catch(() => caches.match(req).then((h) => h || caches.match('./index.html')))
+    );
+    return;
+  }
 
   // Basemap tiles + CDN: cache-first, fall back to network, then cache the result.
   const isTile = /basemaps\.cartocdn\.com/.test(url.host);
