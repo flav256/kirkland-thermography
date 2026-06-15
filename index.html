@@ -525,10 +525,16 @@ const OVERLAYS=[];   // {id,title,file,bounds,source,date,layerId,srcId,visible,
 function addOverlay(o, session){
   const id=o.id||('img-'+Date.now());
   const b=o.bounds; if(!b) return;
-  const srcId='src-'+id, layerId='ov-'+id;
-  if(map.getLayer(layerId)) return;
   const opacity=(o.opacity!=null)?o.opacity:0.7;
   const visible=o.visible!==false;
+  // "pending" = a registered option whose image isn't generated yet (e.g. night
+  // raster). Listed in the drawer, but no map layer until the PNG exists.
+  if(o.pending){
+    OVERLAYS.push({...o, id, layerId:null, srcId:null, session:!!session, visible:false, opacity, pending:true});
+    return;
+  }
+  const srcId='src-'+id, layerId='ov-'+id;
+  if(map.getLayer(layerId)) return;
   map.addSource(srcId,{type:'image', url:o.file,
     coordinates:[[b.west,b.north],[b.east,b.north],[b.east,b.south],[b.west,b.south]]});
   const before = map.getLayer('buildings-fill') ? 'buildings-fill' : undefined;
@@ -558,6 +564,15 @@ function renderOverlayList(){
   host.innerHTML=OVERLAYS.map(o=>{
     const b=o.bounds;
     const ref=[o.source,o.date].filter(Boolean).join(' · ')||'No reference given';
+    if(o.pending){
+      return `<div class="ov" data-id="${o.id}" style="opacity:.7">
+        <div class="top"><span class="name">${o.title||o.id}</span>
+          <span class="badge">not generated</span><button class="zoom">Zoom</button></div>
+        <div class="ref">${ref}</div>
+        <div class="meta">${o.file} — image not generated yet.
+          Process the source TIFF in the <a href="studio.html">Studio</a>, then add the PNG.</div>
+      </div>`;
+    }
     const file=o.session?'session image (not saved)':(o.file||'');
     return `<div class="ov" data-id="${o.id}">
       <div class="top">
@@ -574,12 +589,13 @@ function renderOverlayList(){
   }).join('');
   host.querySelectorAll('.ov').forEach(el=>{
     const id=el.dataset.id, o=OVERLAYS.find(x=>x.id===id);
+    el.querySelector('.zoom').onclick=()=>{ const b=o.bounds;
+      map.fitBounds([[b.west,b.south],[b.east,b.north]],{padding:40}); closeDrawer(); };
+    if(o.pending) return;
     el.querySelector('.ov-vis').onchange=e=>{ o.visible=e.target.checked;
       map.setLayoutProperty(o.layerId,'visibility',o.visible?'visible':'none'); };
     el.querySelector('.ov-op').oninput=e=>{ o.opacity=e.target.value/100;
       map.setPaintProperty(o.layerId,'raster-opacity',o.opacity); };
-    el.querySelector('.zoom').onclick=()=>{ const b=o.bounds;
-      map.fitBounds([[b.west,b.south],[b.east,b.north]],{padding:40}); closeDrawer(); };
     const rm=el.querySelector('.rm'); if(rm) rm.onclick=()=>removeOverlay(id);
   });
 }
