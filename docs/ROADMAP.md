@@ -2,6 +2,29 @@
 
 _Last updated: 2026-06-15_
 
+## North star
+A PWA **lead-generation engine for insulation/retrofit sales**: overlay thermal
+maps, score every roof, enrich with property age/type + heat islands, rank
+streets/sectors, learn from realised jobs, and predict **deal probability** to
+point reps at the highest-revenue doors — then track improvement over time.
+Data: free/open (CC-BY) first, paid layers later. See
+[`DATA_SOURCES.md`](DATA_SOURCES.md) and [`SUPABASE.md`](SUPABASE.md).
+
+### Phases
+1. ✅ **Map & score** — thermal overlay + per-building scores, mobile PWA.
+2. ✅ **Onboard imagery** — Studio (upload TIFF → align → score → export),
+   image registry, geolocation, search.
+3. 🚧 **Backend (Supabase)** — persist datasets/buildings/scores; publish from
+   Studio; auth. *(blocked on project URL + anon key)*
+4. ⬜ **Enrich** — load property roll (age/type/dwellings) + heat islands; join
+   to buildings; show as criteria + filters.
+5. ⬜ **Rank** — street/sector roll-ups (which streets score worst); filter by
+   low efficiency + age + type.
+6. ⬜ **Outcomes** — load realised insulation jobs (private) as ML labels.
+7. ⬜ **Predict** — train model (thermal + age + type + heat-island + area →
+   deal success); surface deal-probability per building/street to reps.
+8. ⬜ **Track** — re-score over time, measure improvement, attribute revenue.
+
 Status legend: ✅ done · 🚧 in progress · ⬜ planned · 💡 idea
 
 ## Now / recently shipped

@@ -47,7 +47,9 @@ python3 score_buildings.py --tif /path/to/…-jour.tif   # repeat --tif to expan
 
 ## Documentation
 - [`docs/BLUEPRINT.md`](docs/BLUEPRINT.md) — live architecture & file map
-- [`docs/ROADMAP.md`](docs/ROADMAP.md) — what's done / next / later
+- [`docs/ROADMAP.md`](docs/ROADMAP.md) — north star, phases, what's next
+- [`docs/DATA_SOURCES.md`](docs/DATA_SOURCES.md) — where the data comes from
+- [`docs/SUPABASE.md`](docs/SUPABASE.md) — backend setup (Phase 2)
 - [`docs/CODING_STRATEGY.md`](docs/CODING_STRATEGY.md) — how we work
 - [`docs/DATA.md`](docs/DATA.md) — data sources & rebuild / expansion guide
 - [`docs/ISSUES.md`](docs/ISSUES.md) — in-repo issue tracker
