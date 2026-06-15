@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <title>Kirkland — Surface Thermography & Insulation Scores</title>
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
 <link rel="manifest" href="manifest.webmanifest" />
 <meta name="theme-color" content="#1b1f24" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -13,73 +13,173 @@
 <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <style>
-  :root { --panel:#1b1f24; --ink:#e8ecf1; --mut:#9aa6b2; }
-  html,body { margin:0; height:100%; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+  :root {
+    --panel:#1b1f24; --panel-2:#242a31; --ink:#e8ecf1; --mut:#9aa6b2; --line:rgba(255,255,255,.10);
+    --accent:#7fb2ff; --safe-t:env(safe-area-inset-top,0px); --safe-b:env(safe-area-inset-bottom,0px);
+  }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
   #map { position:absolute; inset:0; }
-  .panel { position:absolute; z-index:5; background:rgba(27,31,36,.92); color:var(--ink);
-    border-radius:12px; padding:14px 16px; box-shadow:0 6px 22px rgba(0,0,0,.35); backdrop-filter:blur(6px); }
-  #ctrl { top:12px; left:12px; width:248px; }
-  #ctrl h1 { font-size:15px; margin:0 0 2px; }
-  #ctrl .sub { font-size:11px; color:var(--mut); margin-bottom:12px; line-height:1.4; }
-  .row { display:flex; align-items:center; gap:8px; margin:8px 0; font-size:13px; }
-  .row input[type=range]{ flex:1; }
+  button { font-family:inherit; }
+
+  .panel { position:absolute; z-index:5; background:rgba(27,31,36,.94); color:var(--ink);
+    border-radius:14px; box-shadow:0 6px 22px rgba(0,0,0,.38); backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px); border:1px solid var(--line); }
+
+  /* ---- Top bar: brand + search ---- */
+  #topbar { top:calc(12px + var(--safe-t)); left:12px; right:12px; max-width:420px;
+    padding:8px; display:flex; flex-direction:column; gap:8px; }
+  .brandrow { display:flex; align-items:center; gap:8px; }
+  .brandrow .logo { width:26px; height:26px; border-radius:7px; flex:none; }
+  .brandrow h1 { font-size:14px; margin:0; line-height:1.1; flex:1; }
+  .brandrow .gear { background:none; border:0; color:var(--mut); font-size:18px; cursor:pointer; padding:2px 6px; border-radius:8px; }
+  .brandrow .gear:hover { background:var(--panel-2); color:var(--ink); }
+
+  .searchwrap { position:relative; }
+  #search { width:100%; padding:9px 32px 9px 32px; border-radius:10px; border:1px solid var(--line);
+    background:var(--panel-2); color:var(--ink); font-size:14px; outline:none; }
+  #search:focus { border-color:var(--accent); }
+  .searchwrap .ic { position:absolute; top:50%; transform:translateY(-50%); left:10px; color:var(--mut); font-size:14px; pointer-events:none; }
+  #search-clear { position:absolute; top:50%; transform:translateY(-50%); right:6px; background:none; border:0;
+    color:var(--mut); font-size:16px; cursor:pointer; display:none; padding:4px 6px; }
+  #suggestions { list-style:none; margin:6px 0 0; padding:4px; max-height:46vh; overflow:auto;
+    background:var(--panel-2); border-radius:10px; border:1px solid var(--line); display:none; }
+  #suggestions li { padding:8px 10px; border-radius:8px; cursor:pointer; font-size:13px; display:flex; align-items:center; gap:8px; }
+  #suggestions li:hover, #suggestions li.active { background:rgba(127,178,255,.16); }
+  #suggestions .dot { width:10px; height:10px; border-radius:3px; flex:none; }
+  #suggestions .pin { font-size:13px; width:10px; flex:none; text-align:center; }
+  #suggestions .sub { color:var(--mut); font-size:11px; }
+  #suggestions .empty { color:var(--mut); padding:8px 10px; font-size:12px; }
+  #suggestions .grp { color:var(--mut); font-size:10px; text-transform:uppercase; letter-spacing:.6px; padding:8px 10px 3px; }
+
+  /* ---- Controls panel ---- */
+  #ctrl { top:calc(112px + var(--safe-t)); left:12px; width:250px; padding:0; overflow:hidden; }
+  #ctrl .hd { display:flex; align-items:center; justify-content:space-between; padding:11px 14px; cursor:pointer; user-select:none; }
+  #ctrl .hd .t { font-size:12px; text-transform:uppercase; letter-spacing:.6px; color:var(--mut); }
+  #ctrl .hd .chev { color:var(--mut); transition:transform .2s; font-size:12px; }
+  #ctrl.collapsed .bd { display:none; }
+  #ctrl.collapsed .hd .chev { transform:rotate(-90deg); }
+  #ctrl .bd { padding:0 14px 14px; }
+  .sub { font-size:11px; color:var(--mut); margin:0 0 12px; line-height:1.45; }
+  .row { display:flex; align-items:center; gap:8px; margin:8px 0; font-size:13px; color:var(--ink); }
+  .row input[type=range]{ flex:1; accent-color:var(--accent); }
   label.tg { display:flex; align-items:center; gap:8px; font-size:13px; margin:7px 0; cursor:pointer; }
-  .sec { font-size:11px; text-transform:uppercase; letter-spacing:.6px; color:var(--mut); margin:12px 0 4px; }
-  #legend { bottom:12px; left:12px; width:210px; font-size:12px; }
-  #legend .item { display:flex; align-items:center; gap:8px; margin:4px 0; }
-  #legend .sw { width:16px; height:16px; border-radius:3px; border:1px solid rgba(255,255,255,.25); }
+  label.tg input { accent-color:var(--accent); }
+  .sec { font-size:11px; text-transform:uppercase; letter-spacing:.6px; color:var(--mut); margin:14px 0 6px; }
+  #grades { display:flex; flex-wrap:wrap; gap:4px; }
+  #grades button { flex:1; min-width:28px; border:0; border-radius:7px; padding:5px 0; cursor:pointer; color:#111; font-weight:700; }
+  #stats { font-size:11px; color:var(--mut); margin-top:12px; line-height:1.55; }
+
+  /* ---- Legend ---- */
+  #legend { bottom:calc(12px + var(--safe-b)); left:12px; width:212px; padding:0; overflow:hidden; }
+  #legend .hd { display:flex; align-items:center; justify-content:space-between; padding:10px 14px; cursor:pointer; user-select:none; }
+  #legend .hd .t { font-size:11px; text-transform:uppercase; letter-spacing:.6px; color:var(--mut); }
+  #legend .hd .chev { color:var(--mut); transition:transform .2s; font-size:12px; }
+  #legend.collapsed .bd { display:none; }
+  #legend.collapsed .hd .chev { transform:rotate(-90deg); }
+  #legend .bd { padding:0 14px 12px; max-height:54vh; overflow:auto; }
+  #legend .item { display:flex; align-items:center; gap:8px; margin:4px 0; font-size:12px; }
+  #legend .sw { width:15px; height:15px; border-radius:3px; border:1px solid rgba(255,255,255,.25); flex:none; }
+
+  /* ---- Popup ---- */
   .pop h3 { margin:0 0 4px; font-size:14px; }
   .pop .score { font-size:26px; font-weight:700; }
   .pop .grade { display:inline-block; padding:1px 8px; border-radius:6px; color:#fff; font-weight:700; margin-left:6px; }
   .pop table { border-collapse:collapse; margin-top:6px; font-size:11px; width:100%; }
   .pop td { padding:1px 4px; }
   .pop .bar { height:8px; border-radius:2px; }
-  .maplibregl-popup-content { background:#1b1f24; color:#e8ecf1; border-radius:10px; padding:12px 14px; }
+  .pop .sw { display:inline-block; width:11px; height:11px; border-radius:2px; }
+  .maplibregl-popup-content { background:#1b1f24; color:#e8ecf1; border-radius:12px; padding:12px 14px; border:1px solid var(--line); }
   .maplibregl-popup-tip { border-top-color:#1b1f24!important; border-bottom-color:#1b1f24!important; }
-  #stats { font-size:11px; color:var(--mut); margin-top:8px; line-height:1.5; }
-  a { color:#7fb2ff; }
+
+  /* ---- Install button ---- */
+  #install { position:absolute; z-index:6; bottom:calc(14px + var(--safe-b)); left:50%; transform:translateX(-50%); display:none;
+    background:var(--accent); color:#06203f; border:0; border-radius:12px; padding:11px 16px; font-size:14px;
+    font-weight:700; cursor:pointer; box-shadow:0 6px 22px rgba(0,0,0,.4); }
+
+  /* ---- Toast ---- */
+  #toast { position:absolute; z-index:9; left:50%; transform:translateX(-50%); bottom:calc(80px + var(--safe-b));
+    background:var(--panel); color:var(--ink); padding:9px 14px; border-radius:10px; font-size:13px;
+    border:1px solid var(--line); box-shadow:0 6px 22px rgba(0,0,0,.4); opacity:0; transition:opacity .25s; pointer-events:none; }
+  #toast.show { opacity:1; }
+
+  a { color:var(--accent); }
+
+  /* ---- Mobile ---- */
+  @media (max-width:640px){
+    #topbar { right:auto; width:min(92vw,420px); }
+    #ctrl { top:calc(104px + var(--safe-t)); left:12px; width:208px; }
+    #legend { width:188px; }
+    #legend .bd { max-height:40vh; }
+    .maplibregl-ctrl-bottom-right { margin-bottom:calc(60px + var(--safe-b)); }
+  }
 </style>
 </head>
 <body>
 <div id="map"></div>
 
+<!-- Top bar: brand + search -->
+<div id="topbar" class="panel">
+  <div class="brandrow">
+    <img class="logo" src="icons/icon-192.png" alt="" />
+    <h1>Kirkland Thermography</h1>
+    <button class="gear" id="ctrl-toggle" title="Show/hide controls" aria-label="Toggle controls">⚙</button>
+  </div>
+  <div class="searchwrap">
+    <span class="ic">🔎</span>
+    <input id="search" type="search" placeholder="Search address or building…" autocomplete="off" />
+    <button id="search-clear" aria-label="Clear search">✕</button>
+    <ul id="suggestions"></ul>
+  </div>
+</div>
+
+<!-- Controls -->
 <div id="ctrl" class="panel">
-  <h1>Kirkland Thermography</h1>
-  <div class="sub">2016 daytime aerial surface temperature (Ville de Montréal open data). Buildings scored by the surface colour under their roof — higher = cooler = better insulation.</div>
+  <div class="hd" id="ctrl-hd"><span class="t">Map controls</span><span class="chev">▾</span></div>
+  <div class="bd">
+    <div class="sub">2016 daytime aerial surface temperature (Ville de Montréal open data). Buildings scored by the surface colour under their roof — higher = cooler = better insulation.</div>
 
-  <div class="sec">Layers</div>
-  <label class="tg"><input type="checkbox" id="t-thermal" checked> Thermal overlay</label>
-  <div class="row">opacity <input type="range" id="o-thermal" min="0" max="100" value="70"></div>
-  <label class="tg"><input type="checkbox" id="t-build" checked> Building scores</label>
-  <div class="row">opacity <input type="range" id="o-build" min="0" max="100" value="80"></div>
+    <div class="sec">Layers</div>
+    <label class="tg"><input type="checkbox" id="t-thermal" checked> Thermal overlay</label>
+    <div class="row">opacity <input type="range" id="o-thermal" min="0" max="100" value="70"></div>
+    <label class="tg"><input type="checkbox" id="t-build" checked> Building scores</label>
+    <div class="row">opacity <input type="range" id="o-build" min="0" max="100" value="80"></div>
 
-  <div class="sec">Filter by grade</div>
-  <div class="row" style="flex-wrap:wrap;gap:4px" id="grades"></div>
+    <div class="sec">Filter by grade</div>
+    <div id="grades"></div>
 
-  <div id="stats">loading…</div>
+    <div id="stats">loading…</div>
+  </div>
 </div>
 
+<!-- Legend -->
 <div id="legend" class="panel">
-  <div class="sec" style="margin-top:0">Insulation score</div>
-  <div class="item"><span class="sw" style="background:#1eaa46"></span> 85–100 · A (excellent)</div>
-  <div class="item"><span class="sw" style="background:#86c33b"></span> 70–84 · B</div>
-  <div class="item"><span class="sw" style="background:#dcdc3c"></span> 55–69 · C</div>
-  <div class="item"><span class="sw" style="background:#e8a02e"></span> 40–54 · D</div>
-  <div class="item"><span class="sw" style="background:#dc5a28"></span> 25–39 · E</div>
-  <div class="item"><span class="sw" style="background:#dc2828"></span> 0–24 · F (poor)</div>
-  <div class="sec">Thermal (surface °C)</div>
-  <div class="item"><span class="sw" style="background:#6a91ba"></span> ≤26 · coolest</div>
-  <div class="item"><span class="sw" style="background:#bfc4c0"></span> 27–32 (reference)</div>
-  <div class="item"><span class="sw" style="background:#ffffbf"></span> 33–38</div>
-  <div class="item"><span class="sw" style="background:#fab884"></span> 39–44</div>
-  <div class="item"><span class="sw" style="background:#ed7552"></span> 45–50</div>
-  <div class="item"><span class="sw" style="background:#d62f29"></span> 51–56</div>
-  <div class="item"><span class="sw" style="background:#ad0900"></span> ≥57 · hottest</div>
+  <div class="hd" id="legend-hd"><span class="t">Legend</span><span class="chev">▾</span></div>
+  <div class="bd">
+    <div class="sec" style="margin-top:2px">Insulation score</div>
+    <div class="item"><span class="sw" style="background:#1eaa46"></span> 85–100 · A (excellent)</div>
+    <div class="item"><span class="sw" style="background:#86c33b"></span> 70–84 · B</div>
+    <div class="item"><span class="sw" style="background:#dcdc3c"></span> 55–69 · C</div>
+    <div class="item"><span class="sw" style="background:#e8a02e"></span> 40–54 · D</div>
+    <div class="item"><span class="sw" style="background:#dc5a28"></span> 25–39 · E</div>
+    <div class="item"><span class="sw" style="background:#dc2828"></span> 0–24 · F (poor)</div>
+    <div class="sec">Thermal (surface °C)</div>
+    <div class="item"><span class="sw" style="background:#6a91ba"></span> ≤26 · coolest</div>
+    <div class="item"><span class="sw" style="background:#bfc4c0"></span> 27–32 (reference)</div>
+    <div class="item"><span class="sw" style="background:#ffffbf"></span> 33–38</div>
+    <div class="item"><span class="sw" style="background:#fab884"></span> 39–44</div>
+    <div class="item"><span class="sw" style="background:#ed7552"></span> 45–50</div>
+    <div class="item"><span class="sw" style="background:#d62f29"></span> 51–56</div>
+    <div class="item"><span class="sw" style="background:#ad0900"></span> ≥57 · hottest</div>
+  </div>
 </div>
+
+<button id="install">⬇ Install app</button>
+<div id="toast"></div>
 
 <script>
-// Overlay corners shifted ~4 m W / 6 m N so the thermal roofs line up with the
-// OSM footprints and basemap (corrects the source raster's ~7 m SE registration).
+// Overlay corners shifted so the thermal roofs line up with the OSM footprints
+// and basemap (corrects the source raster's ~7 m SE registration).
 const B = {"west":-73.91766753211867,"south":45.43505903098567,"east":-73.82879227029036,"north":45.470757780611336};
 const CLASS_COLORS = {"57 +":"#ad0900","51-56":"#d62f29","45-50":"#ed7552","39-44":"#fab884","33-38":"#ffffbf","27-32 ref":"#bfc4c0","<=26":"#6a91ba"};
 const GRADE_COLOR = {A:"#1eaa46",B:"#86c33b",C:"#dcdc3c",D:"#e8a02e",E:"#dc5a28",F:"#dc2828"};
@@ -99,10 +199,86 @@ const map = new maplibregl.Map({
     layers:[{id:"base",type:"raster",source:"carto"}]
   },
   center:[(B.west+B.east)/2,(B.south+B.north)/2],
-  zoom:12.6
+  zoom:12.6,
+  maxBounds:[[B.west-0.06,B.south-0.04],[B.east+0.06,B.north+0.04]]
 });
 map.addControl(new maplibregl.NavigationControl({visualizePitch:false}),'top-right');
 map.addControl(new maplibregl.ScaleControl({maxWidth:120,unit:'metric'}),'bottom-right');
+
+// Geolocation — "use it while out in the street". Tracks position + heading.
+const geolocate = new maplibregl.GeolocateControl({
+  positionOptions:{ enableHighAccuracy:true },
+  trackUserLocation:true,
+  showUserHeading:true,
+  showAccuracyCircle:true
+});
+map.addControl(geolocate,'top-right');
+geolocate.on('outofmaxbounds',()=>toast('You appear to be outside Kirkland’s coverage area.'));
+geolocate.on('error',(e)=>{ if(e && e.code===1) toast('Location permission denied.'); else toast('Could not get your location.'); });
+
+// ---- small helpers ----
+let toastT;
+function toast(msg){
+  const el=document.getElementById('toast'); el.textContent=msg; el.classList.add('show');
+  clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove('show'),2600);
+}
+function centroid(geom){
+  // area-weighted centroid of the outer ring (good enough to fly to a building)
+  const ring=geom.coordinates[0]; let x=0,y=0,a=0;
+  for(let i=0,n=ring.length-1;i<n;i++){
+    const [x0,y0]=ring[i],[x1,y1]=ring[i+1]; const f=x0*y1-x1*y0; a+=f; x+=(x0+x1)*f; y+=(y0+y1)*f;
+  }
+  if(Math.abs(a)<1e-12){ // degenerate — average vertices
+    let sx=0,sy=0; ring.forEach(p=>{sx+=p[0];sy+=p[1];}); return [sx/ring.length,sy/ring.length];
+  }
+  a*=0.5; return [x/(6*a), y/(6*a)];
+}
+function pointInRing(lng,lat,ring){
+  let inside=false;
+  for(let i=0,j=ring.length-1;i<ring.length;j=i++){
+    const xi=ring[i][0],yi=ring[i][1],xj=ring[j][0],yj=ring[j][1];
+    if(((yi>lat)!==(yj>lat)) && (lng < (xj-xi)*(lat-yi)/(yj-yi)+xi)) inside=!inside;
+  }
+  return inside;
+}
+function buildingAt(lng,lat){
+  // exact: building whose polygon contains the point; fallback: nearest centroid
+  let best=null, bestD=Infinity;
+  for(const f of FEATURES){
+    if(pointInRing(lng,lat,f.geometry.coordinates[0])) return f;
+    const c=centroid(f.geometry); const d=(c[0]-lng)**2+(c[1]-lat)**2;
+    if(d<bestD){ bestD=d; best=f; }
+  }
+  // only accept a nearby fallback (~120 m), else null
+  return bestD < 0.0015**2 ? best : null;
+}
+
+let FEATURES=[];
+let searchMarker=null;
+const popup = new maplibregl.Popup({closeButton:true,maxWidth:'300px'});
+
+function popupHTML(p){
+  const cc=typeof p.class_counts==='string'?JSON.parse(p.class_counts):p.class_counts;
+  const tot=Object.values(cc).reduce((a,b)=>a+b,0)||1;
+  let rows='';
+  ["<=26","27-32 ref","33-38","39-44","45-50","51-56","57 +"].forEach(k=>{
+    const v=cc[k]||0; if(!v) return;
+    const pct=(100*v/tot).toFixed(0);
+    rows+=`<tr><td><span class="sw" style="background:${CLASS_COLORS[k]}"></span></td>`+
+          `<td>${k}°C</td><td><div class="bar" style="width:${Math.max(4,pct)}px;background:${CLASS_COLORS[k]}"></div></td><td>${pct}%</td></tr>`;
+  });
+  const title = p.addr || p.name || ('Building '+p.osm_id);
+  return `<div class="pop"><h3>${title}</h3>`+
+    `<span class="score" style="color:${p.color}">${p.score}</span><span style="color:#9aa6b2">/100</span>`+
+    `<span class="grade" style="background:${GRADE_COLOR[p.grade]}">${p.grade}</span>`+
+    `<table>${rows}</table>`+
+    `<div style="font-size:10px;color:#9aa6b2;margin-top:6px">${p.valid_px} valid px · roof surface-temp mix</div></div>`;
+}
+function showBuilding(feature, lngLat){
+  const p=feature.properties;
+  map.setFilter('buildings-hi',['==','osm_id',p.osm_id]);
+  popup.setLngLat(lngLat||centroid(feature.geometry)).setHTML(popupHTML(p)).addTo(map);
+}
 
 map.on('load', async () => {
   map.addSource('thermal',{ type:'image',
@@ -111,6 +287,7 @@ map.on('load', async () => {
   map.addLayer({id:'thermal',type:'raster',source:'thermal',paint:{'raster-opacity':0.7,'raster-resampling':'nearest'}});
 
   const gj = await (await fetch('data/buildings_scored.geojson')).json();
+  FEATURES = gj.features;
   map.addSource('buildings',{type:'geojson',data:gj});
   map.addLayer({id:'buildings-fill',type:'fill',source:'buildings',
     paint:{'fill-color':['get','color'],'fill-opacity':0.8,'fill-outline-color':'rgba(0,0,0,0.25)'}});
@@ -118,51 +295,29 @@ map.on('load', async () => {
     paint:{'line-color':'#00e5ff','line-width':2.5},filter:['==','osm_id',-1]});
 
   // stats
-  const sc = gj.features.map(f=>f.properties.score);
+  const sc = FEATURES.map(f=>f.properties.score);
   const avg = (sc.reduce((a,b)=>a+b,0)/sc.length).toFixed(1);
   document.getElementById('stats').innerHTML =
     `<b>${sc.length.toLocaleString()}</b> buildings scored · average <b>${avg}</b>/100<br>`+
-    `Click any building for its breakdown.`;
+    `Tap any building for its breakdown.`;
 
   // grade filter chips
   const gradesDiv = document.getElementById('grades');
   const active = new Set(['A','B','C','D','E','F']);
   ['A','B','C','D','E','F'].forEach(g=>{
     const b=document.createElement('button');
-    b.textContent=g; b.style.cssText=`flex:1;min-width:28px;border:0;border-radius:6px;padding:4px 0;cursor:pointer;color:#111;font-weight:700;background:${GRADE_COLOR[g]}`;
+    b.textContent=g; b.style.background=GRADE_COLOR[g];
     b.onclick=()=>{ if(active.has(g)){active.delete(g);b.style.opacity=.3;} else {active.add(g);b.style.opacity=1;} applyFilter(); };
     gradesDiv.appendChild(b);
   });
-  function applyFilter(){
-    map.setFilter('buildings-fill',['in',['get','grade'],['literal',[...active]]]);
-  }
+  function applyFilter(){ map.setFilter('buildings-fill',['in',['get','grade'],['literal',[...active]]]); }
 
   // interactions
-  const popup = new maplibregl.Popup({closeButton:true,maxWidth:'300px'});
   map.on('mousemove','buildings-fill',e=>{ map.getCanvas().style.cursor='pointer';
     map.setFilter('buildings-hi',['==','osm_id',e.features[0].properties.osm_id]); });
   map.on('mouseleave','buildings-fill',()=>{ map.getCanvas().style.cursor='';
     map.setFilter('buildings-hi',['==','osm_id',-1]); });
-  map.on('click','buildings-fill',e=>{
-    const p=e.features[0].properties;
-    const cc=typeof p.class_counts==='string'?JSON.parse(p.class_counts):p.class_counts;
-    const tot=Object.values(cc).reduce((a,b)=>a+b,0)||1;
-    let rows='';
-    ["<=26","27-32 ref","33-38","39-44","45-50","51-56","57 +"].forEach(k=>{
-      const v=cc[k]||0; if(!v) return;
-      const pct=(100*v/tot).toFixed(0);
-      rows+=`<tr><td><span class="sw" style="display:inline-block;width:11px;height:11px;border-radius:2px;background:${CLASS_COLORS[k]}"></span></td>`+
-            `<td>${k}°C</td><td><div class="bar" style="width:${Math.max(4,pct)}px;background:${CLASS_COLORS[k]}"></div></td><td>${pct}%</td></tr>`;
-    });
-    const title = p.addr || p.name || ('Building '+p.osm_id);
-    popup.setLngLat(e.lngLat).setHTML(
-      `<div class="pop"><h3>${title}</h3>`+
-      `<span class="score" style="color:${p.color}">${p.score}</span><span style="color:#9aa6b2">/100</span>`+
-      `<span class="grade" style="background:${GRADE_COLOR[p.grade]}">${p.grade}</span>`+
-      `<table>${rows}</table>`+
-      `<div style="font-size:10px;color:#9aa6b2;margin-top:6px">${p.valid_px} valid px · roof surface-temp mix</div></div>`
-    ).addTo(map);
-  });
+  map.on('click','buildings-fill',e=>showBuilding(e.features[0], e.lngLat));
 
   // toggles
   const bind=(cb,layer)=>document.getElementById(cb).onchange=e=>
@@ -170,7 +325,132 @@ map.on('load', async () => {
   bind('t-thermal','thermal'); bind('t-build','buildings-fill');
   document.getElementById('o-thermal').oninput=e=>map.setPaintProperty('thermal','raster-opacity',e.target.value/100);
   document.getElementById('o-build').oninput=e=>map.setPaintProperty('buildings-fill','fill-opacity',e.target.value/100);
+
+  initSearch();
 });
+
+// ---- Search: local buildings (offline) + address geocoder (Nominatim) ----
+// Few OSM footprints carry an address tag, so to find a specific house we geocode
+// the typed address against OpenStreetMap (bounded to Kirkland) and then select
+// the building at that point.
+function initSearch(){
+  const input=document.getElementById('search');
+  const clear=document.getElementById('search-clear');
+  const list=document.getElementById('suggestions');
+  let cursor=-1, rows=[], geoT=null, reqId=0;
+
+  // rows: {kind:'b'|'a', feature?, lng?, lat?, label, sub, swatch}
+  function render(){
+    cursor=-1;
+    if(!rows.length){ list.innerHTML='<li class="empty">No matches yet…</li>'; list.style.display='block'; return; }
+    let html='', lastKind=null;
+    rows.forEach((r,i)=>{
+      if(r.kind!==lastKind){ html+=`<li class="grp">${r.kind==='b'?'Buildings':'Addresses'}</li>`; lastKind=r.kind; }
+      const icon=r.kind==='b'
+        ? `<span class="dot" style="background:${r.swatch}"></span>`
+        : `<span class="pin">📍</span>`;
+      html+=`<li data-i="${i}">${icon}<span><div>${r.label}</div><div class="sub">${r.sub}</div></span></li>`;
+    });
+    list.innerHTML=html; list.style.display='block';
+    [...list.querySelectorAll('li[data-i]')].forEach(li=>li.onclick=()=>pick(rows[+li.dataset.i]));
+  }
+  function localMatches(s){
+    const out=[];
+    for(const f of FEATURES){
+      const p=f.properties;
+      const hay=((p.addr||'')+' '+(p.name||'')+' '+p.osm_id).toLowerCase();
+      if(hay.includes(s)) out.push(f);
+      if(out.length>=6) break;
+    }
+    out.sort((a,b)=>(!!b.properties.addr - !!a.properties.addr));
+    return out.map(f=>({kind:'b', feature:f, swatch:f.properties.color,
+      label:f.properties.addr||f.properties.name||('Building '+f.properties.osm_id),
+      sub:`Score ${f.properties.score} · grade ${f.properties.grade}`}));
+  }
+  async function geocode(q, myReq){
+    try{
+      const vb=`${B.west},${B.north},${B.east},${B.south}`;
+      const url=`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&bounded=1`+
+                `&viewbox=${vb}&q=${encodeURIComponent(q)}`;
+      const res=await fetch(url,{headers:{'Accept':'application/json'}});
+      if(!res.ok || myReq!==reqId) return;
+      const hits=await res.json();
+      if(myReq!==reqId) return;
+      const addrRows=hits.map(h=>({kind:'a', lng:+h.lon, lat:+h.lat,
+        label:(h.display_name||'').split(',').slice(0,2).join(',').trim()||h.display_name,
+        sub:'Address · OpenStreetMap'}));
+      rows=rows.filter(r=>r.kind==='b').concat(addrRows);
+      render();
+    }catch(_){ /* offline or blocked — local results still shown */ }
+  }
+  function search(q){
+    const s=q.trim().toLowerCase();
+    clear.style.display=s?'block':'none';
+    reqId++;
+    if(!s){ rows=[]; list.style.display='none'; list.innerHTML=''; return; }
+    rows=localMatches(s); render();
+    clearTimeout(geoT);
+    if(s.length>=3){ const my=reqId; geoT=setTimeout(()=>geocode(q.trim(),my),350); }
+  }
+  function pick(r){
+    list.style.display='none';
+    if(r.kind==='b'){
+      input.value=r.label;
+      const c=centroid(r.feature.geometry);
+      map.flyTo({center:c, zoom:18.5, speed:1.4});
+      map.once('moveend',()=>showBuilding(r.feature, c));
+    } else {
+      input.value=r.label;
+      if(searchMarker) searchMarker.remove();
+      searchMarker=new maplibregl.Marker({color:'#7fb2ff'}).setLngLat([r.lng,r.lat]).addTo(map);
+      map.flyTo({center:[r.lng,r.lat], zoom:18.5, speed:1.4});
+      map.once('moveend',()=>{
+        const f=buildingAt(r.lng,r.lat);
+        if(f) showBuilding(f); else toast('No scored building at that address.');
+      });
+    }
+  }
+  input.addEventListener('input',()=>search(input.value));
+  input.addEventListener('keydown',e=>{
+    const items=[...list.querySelectorAll('li[data-i]')];
+    if(e.key==='ArrowDown'){ e.preventDefault(); cursor=Math.min(cursor+1,items.length-1); }
+    else if(e.key==='ArrowUp'){ e.preventDefault(); cursor=Math.max(cursor-1,0); }
+    else if(e.key==='Enter'){ e.preventDefault();
+      const li=cursor>=0?items[cursor]:items[0];
+      if(li) pick(rows[+li.dataset.i]); return; }
+    else return;
+    items.forEach((li,i)=>li.classList.toggle('active', i===cursor));
+  });
+  clear.onclick=()=>{ input.value=''; search(''); input.focus(); if(searchMarker){searchMarker.remove();searchMarker=null;} };
+  document.addEventListener('click',e=>{ if(!e.target.closest('.searchwrap')) list.style.display='none'; });
+}
+
+// ---- Collapsible panels ----
+function collapser(panelId, headId){
+  document.getElementById(headId).addEventListener('click',()=>
+    document.getElementById(panelId).classList.toggle('collapsed'));
+}
+collapser('ctrl','ctrl-hd');
+collapser('legend','legend-hd');
+document.getElementById('ctrl-toggle').onclick=()=>{
+  const c=document.getElementById('ctrl'); c.style.display = (c.style.display==='none')?'':'none';
+};
+// On small screens start with panels collapsed so the map stays usable.
+if (window.matchMedia('(max-width:640px)').matches){
+  document.getElementById('ctrl').classList.add('collapsed');
+  document.getElementById('legend').classList.add('collapsed');
+}
+
+// ---- PWA install ----
+let deferredPrompt=null;
+const installBtn=document.getElementById('install');
+window.addEventListener('beforeinstallprompt',(e)=>{ e.preventDefault(); deferredPrompt=e; installBtn.style.display='block'; });
+installBtn.onclick=async()=>{
+  if(!deferredPrompt) return;
+  deferredPrompt.prompt(); await deferredPrompt.userChoice;
+  deferredPrompt=null; installBtn.style.display='none';
+};
+window.addEventListener('appinstalled',()=>{ installBtn.style.display='none'; toast('Installed — find it on your home screen.'); });
 
 // PWA: register service worker for offline use + home-screen install.
 if ('serviceWorker' in navigator) {
