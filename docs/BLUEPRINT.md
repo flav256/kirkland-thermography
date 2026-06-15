@@ -41,8 +41,10 @@ served by GitHub Pages → rendered client-side by MapLibre GL.
 | `index.html` | The entire front-end: map setup, layers, UI panels, search, geolocation, PWA install, popups. Single-file app. |
 | `score_buildings.py` | Offline scoring pipeline. CLI; supports multiple rasters for coverage expansion. |
 | `data/buildings_scored.geojson` | ~6.2k scored building footprints (WGS84) + per-class histograms. |
+| `data/overlays.json` | **Image registry** — the list of thermal overlays (file, bounds, source, date). Drives the map layers and the ☰ drawer "log". Add an image = add an entry here. |
 | `data/overlay_jour.png` | Daytime thermal raster, reprojected to a lon/lat bounding box for the image overlay. |
 | `data/overlay_bounds.json` | The raster's true geographic bounds + pixel size. |
+| `.github/workflows/deploy-pages.yml` | GitHub Pages deploy (push to `main`). Requires Pages source = "GitHub Actions". |
 | `service-worker.js` | Offline cache (app shell + data + runtime tile/CDN cache). Bump `CACHE` on any change. |
 | `manifest.webmanifest` / `icons/` | PWA metadata + icons (incl. maskable). |
 | `docs/` | This blueprint, the roadmap, coding strategy, data guide, issue tracker. |
@@ -66,6 +68,19 @@ that must stay consistent**:
 - Python samples footprints shifted SE (`--off-e/--off-s`).
 - `index.html` shifts the *overlay corners* (`const B`) NW by the same amount.
 If you change one, change the other, or roofs and footprints will drift apart.
+
+## 5b. Thermal image registry & drawer
+- `data/overlays.json` is the source of truth for which thermal images show on
+  the map. Each entry: `{id, title, file, bounds{west,south,east,north},
+  source, date, opacity, visible}`.
+- On load the app adds one raster `image` layer per entry (under the buildings)
+  and lists them in the ☰ **Images & Settings** drawer — the "log" of images
+  with their references and bounds. Per-image visibility + opacity live there.
+- The drawer's **Load a new image** form adds an overlay at runtime from a local
+  file + bounds (or "Use map view"). These are **session-only** (object URLs);
+  to persist, commit the file to `data/` and add an entry to `overlays.json`.
+- `maxBounds` is recomputed from the union of all overlay bounds, so adding an
+  image automatically extends the pannable area.
 
 ## 6. Front-end runtime notes
 - Libs are loaded from `unpkg` (MapLibre 4.7.1) + CARTO tiles + MapLibre demo

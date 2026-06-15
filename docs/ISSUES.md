@@ -8,8 +8,10 @@ Priorities: **P1** now · **P2** soon · **P3** nice-to-have.
 
 ## Open
 - [#7] OPEN (P2) — Coverage expansion: add neighbouring-borough day rasters +
-  wider OSM extract; rebuild scores + overlay. Pipeline supports `--tif` ×N.
-- [#8] OPEN (P2) — Night raster overlay + day/night toggle.
+  wider OSM extract; rebuild scores + overlay. Pipeline supports `--tif` ×N;
+  register new overlays in `data/overlays.json`.
+- [#8] OPEN (P2) — Night raster: commit the file + add an `overlays.json` entry
+  (already loadable at runtime via the ☰ drawer).
 - [#9] OPEN (P2) — Accuracy v2: interior-pixel sampling with small-footprint
   fallback; expose per-building confidence (valid/total px ratio) in the popup.
 - [#10] OPEN (P3) — Basemap switcher (satellite/aerial).
@@ -25,6 +27,9 @@ Priorities: **P1** now · **P2** soon · **P3** nice-to-have.
 - [#4] DONE (P2) — PWA install button; verified manifest + maskable icon.
 - [#5] DONE (P2) — `score_buildings.py` → configurable multi-raster CLI.
 - [#6] DONE (P2) — Palette-distance threshold for off-palette pixel rejection.
+- [#14] DONE (P2) — Image registry (`data/overlays.json`) + ☰ drawer log +
+  runtime image loader (file + bounds, session-only).
+- [#15] DONE (P2) — GitHub Pages deploy workflow.
 
 ## Notes
 - When you finish an item, move it to **Done** and tick the matching line in

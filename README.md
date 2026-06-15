@@ -13,6 +13,9 @@ live geolocation. Add to your home screen on mobile.
 - 🔎 **Search** by address / building, with suggestions and fly-to
 - 📍 **Geolocation** (tracks your position + heading) for walking the streets
 - 🎚️ Layer toggles, opacity sliders, and filter-by-grade chips
+- 🖼️ **Images & Settings drawer** (☰): a log of all thermal images with their
+  references + bounds, per-image visibility/opacity, and a **loader** to add a
+  new image (file + bounds) live — backed by `data/overlays.json`
 - 📱 Mobile-first UI: collapsible panels, safe-area aware, no hidden legend
 - ⬇️ One-tap **install** (PWA) and full **offline** use once loaded
 - 👆 Tap any building for its surface-temperature breakdown

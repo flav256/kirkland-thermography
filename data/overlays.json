@@ -1,0 +1,16 @@
+{
+  "overlays": [
+    {
+      "id": "kirkland-2016-jour",
+      "title": "Kirkland — 2016 (daytime)",
+      "file": "data/overlay_jour.png",
+      "bounds": { "west": -73.91766753211867, "south": 45.43505903098567, "east": -73.82879227029036, "north": 45.470757780611336 },
+      "source": "Ville de Montréal — Thermographie aérienne de surface 2016 (jour)",
+      "date": "2016",
+      "crs": "EPSG:2950 (source)",
+      "added": "2025-12",
+      "visible": true,
+      "opacity": 0.7
+    }
+  ]
+}

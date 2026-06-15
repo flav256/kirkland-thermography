@@ -105,6 +105,51 @@
 
   a { color:var(--accent); }
 
+  /* ---- Drawer (Images & Settings) ---- */
+  #scrim { position:absolute; inset:0; z-index:14; background:rgba(0,0,0,.45); opacity:0;
+    pointer-events:none; transition:opacity .2s; }
+  #scrim.open { opacity:1; pointer-events:auto; }
+  #drawer { position:absolute; z-index:15; top:0; right:0; height:100%; width:min(360px,92vw);
+    background:rgba(22,26,30,.98); color:var(--ink); border-left:1px solid var(--line);
+    box-shadow:-8px 0 30px rgba(0,0,0,.45); transform:translateX(100%); transition:transform .25s;
+    display:flex; flex-direction:column; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); }
+  #drawer.open { transform:translateX(0); }
+  .dw-hd { display:flex; align-items:center; justify-content:space-between; padding:calc(14px + var(--safe-t)) 16px 12px; border-bottom:1px solid var(--line); }
+  .dw-hd strong { font-size:15px; }
+  .dw-hd button { background:none; border:0; color:var(--mut); font-size:18px; cursor:pointer; padding:4px 8px; border-radius:8px; }
+  .dw-hd button:hover { background:var(--panel-2); color:var(--ink); }
+  .dw-bd { padding:14px 16px calc(20px + var(--safe-b)); overflow:auto; }
+  .dw-sec { font-size:11px; text-transform:uppercase; letter-spacing:.6px; color:var(--mut); margin:16px 0 8px; }
+  .dw-sec:first-child { margin-top:2px; }
+  .muted { color:var(--mut); }
+
+  .ov { background:var(--panel-2); border:1px solid var(--line); border-radius:12px; padding:10px 12px; margin-bottom:10px; }
+  .ov .top { display:flex; align-items:center; gap:8px; }
+  .ov .top input[type=checkbox]{ accent-color:var(--accent); }
+  .ov .name { font-size:13px; font-weight:600; flex:1; }
+  .ov .zoom { background:none; border:1px solid var(--line); color:var(--accent); border-radius:7px; font-size:11px; padding:3px 8px; cursor:pointer; }
+  .ov .ref { font-size:11px; color:var(--mut); margin:6px 0 4px; line-height:1.45; }
+  .ov .meta { font-size:10px; color:var(--mut); font-family:ui-monospace,Menlo,Consolas,monospace; word-break:break-all; }
+  .ov .orow { display:flex; align-items:center; gap:8px; font-size:11px; color:var(--mut); margin-top:8px; }
+  .ov .orow input[type=range]{ flex:1; accent-color:var(--accent); }
+  .ov .badge { font-size:9px; text-transform:uppercase; letter-spacing:.4px; background:#3a2f12; color:#f0c36b; padding:2px 6px; border-radius:5px; }
+  .ov .rm { background:none; border:0; color:#e88; cursor:pointer; font-size:11px; }
+
+  #add-image { border:1px solid var(--line); border-radius:12px; padding:4px 12px; margin-top:4px; }
+  #add-image summary { cursor:pointer; font-size:13px; padding:8px 0; color:var(--accent); }
+  .addgrid { display:flex; flex-direction:column; gap:8px; padding:4px 0 10px; }
+  .fld { display:flex; flex-direction:column; gap:4px; font-size:11px; color:var(--mut); }
+  .fld input { padding:7px 9px; border-radius:8px; border:1px solid var(--line); background:var(--panel); color:var(--ink); font-size:13px; }
+  .bounds-hd { font-size:11px; color:var(--mut); display:flex; align-items:center; justify-content:space-between; margin-top:2px; }
+  .mini { background:none; border:1px solid var(--line); color:var(--accent); border-radius:7px; font-size:11px; padding:3px 8px; cursor:pointer; }
+  .bgrid { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+  .bgrid label { display:flex; align-items:center; gap:6px; font-size:11px; color:var(--mut); }
+  .bgrid input { flex:1; padding:6px 8px; border-radius:8px; border:1px solid var(--line); background:var(--panel); color:var(--ink); font-size:12px; min-width:0; }
+  .primary { background:var(--accent); color:#06203f; border:0; border-radius:9px; padding:9px; font-weight:700; cursor:pointer; font-size:13px; }
+  .hint { font-size:10px; color:var(--mut); line-height:1.5; margin:2px 0 0; }
+  .links { list-style:none; padding:0; margin:0; font-size:12px; color:var(--mut); }
+  .links li { margin:5px 0; }
+
   /* ---- Mobile ---- */
   @media (max-width:640px){
     #topbar { right:auto; width:min(92vw,420px); }
@@ -123,7 +168,7 @@
   <div class="brandrow">
     <img class="logo" src="icons/icon-192.png" alt="" />
     <h1>Kirkland Thermography</h1>
-    <button class="gear" id="ctrl-toggle" title="Show/hide controls" aria-label="Toggle controls">⚙</button>
+    <button class="gear" id="menu-btn" title="Images & settings" aria-label="Open menu">☰</button>
   </div>
   <div class="searchwrap">
     <span class="ic">🔎</span>
@@ -137,12 +182,10 @@
 <div id="ctrl" class="panel">
   <div class="hd" id="ctrl-hd"><span class="t">Map controls</span><span class="chev">▾</span></div>
   <div class="bd">
-    <div class="sub">2016 daytime aerial surface temperature (Ville de Montréal open data). Buildings scored by the surface colour under their roof — higher = cooler = better insulation.</div>
+    <div class="sub">2016 daytime aerial surface temperature (Ville de Montréal open data). Buildings scored by the surface colour under their roof — higher = cooler = better insulation. Manage thermal images in <a id="open-drawer-link" href="#">☰ Images</a>.</div>
 
-    <div class="sec">Layers</div>
-    <label class="tg"><input type="checkbox" id="t-thermal" checked> Thermal overlay</label>
-    <div class="row">opacity <input type="range" id="o-thermal" min="0" max="100" value="70"></div>
-    <label class="tg"><input type="checkbox" id="t-build" checked> Building scores</label>
+    <div class="sec">Building scores</div>
+    <label class="tg"><input type="checkbox" id="t-build" checked> Show building scores</label>
     <div class="row">opacity <input type="range" id="o-build" min="0" max="100" value="80"></div>
 
     <div class="sec">Filter by grade</div>
@@ -173,6 +216,54 @@
     <div class="item"><span class="sw" style="background:#ad0900"></span> ≥57 · hottest</div>
   </div>
 </div>
+
+<!-- Scrim + Images & Settings drawer -->
+<div id="scrim"></div>
+<aside id="drawer" aria-hidden="true">
+  <div class="dw-hd">
+    <strong>Images &amp; Settings</strong>
+    <button id="drawer-close" aria-label="Close">✕</button>
+  </div>
+  <div class="dw-bd">
+    <div class="dw-sec">Thermal images <span id="ov-count" class="muted"></span></div>
+    <div id="overlay-list"></div>
+
+    <details id="add-image">
+      <summary>＋ Load a new image</summary>
+      <div class="addgrid">
+        <label class="fld"><span>Image file (PNG/JPG)</span>
+          <input type="file" id="ai-file" accept="image/png,image/jpeg"></label>
+        <label class="fld"><span>Title</span>
+          <input type="text" id="ai-title" placeholder="e.g. Kirkland — 2016 (night)"></label>
+        <label class="fld"><span>Source / reference</span>
+          <input type="text" id="ai-source" placeholder="Ville de Montréal — Thermographie 2016 (nuit)"></label>
+        <label class="fld"><span>Date</span>
+          <input type="text" id="ai-date" placeholder="2016"></label>
+        <div class="bounds-hd">Bounds (WGS84)
+          <button id="ai-usemap" type="button" class="mini">Use map view</button></div>
+        <div class="bgrid">
+          <label>W<input type="number" step="any" id="ai-w"></label>
+          <label>S<input type="number" step="any" id="ai-s"></label>
+          <label>E<input type="number" step="any" id="ai-e"></label>
+          <label>N<input type="number" step="any" id="ai-n"></label>
+        </div>
+        <button id="ai-add" type="button" class="primary">Add to map</button>
+        <p class="hint">Added images are <b>session-only</b>. To save one permanently,
+          drop the file in <code>data/</code>, add an entry to
+          <code>data/overlays.json</code>, then run the scoring pipeline
+          (<a href="docs/DATA.md">docs/DATA.md</a>).</p>
+      </div>
+    </details>
+
+    <div class="dw-sec">Reference</div>
+    <ul class="links">
+      <li><a href="docs/BLUEPRINT.md">Blueprint</a> · how it's built</li>
+      <li><a href="docs/ROADMAP.md">Roadmap</a> · what's next</li>
+      <li><a href="docs/DATA.md">Data guide</a> · rebuild &amp; expand coverage</li>
+    </ul>
+    <p class="muted" style="font-size:11px">Thermography © Ville de Montréal (2016) · Buildings © OpenStreetMap · Basemap © CARTO.</p>
+  </div>
+</aside>
 
 <button id="install">⬇ Install app</button>
 <div id="toast"></div>
@@ -281,10 +372,12 @@ function showBuilding(feature, lngLat){
 }
 
 map.on('load', async () => {
-  map.addSource('thermal',{ type:'image',
-    url:'data/overlay_jour.png',
-    coordinates:[[B.west,B.north],[B.east,B.north],[B.east,B.south],[B.west,B.south]] });
-  map.addLayer({id:'thermal',type:'raster',source:'thermal',paint:{'raster-opacity':0.7,'raster-resampling':'nearest'}});
+  // Thermal image overlays come from the registry (data/overlays.json) so new
+  // images are added by editing that file — no code change. See the ☰ drawer.
+  try {
+    const reg = await (await fetch('data/overlays.json')).json();
+    (reg.overlays||[]).forEach(o=>addOverlay(o,false));
+  } catch(_) { /* registry missing — continue without thermal overlays */ }
 
   const gj = await (await fetch('data/buildings_scored.geojson')).json();
   FEATURES = gj.features;
@@ -319,13 +412,13 @@ map.on('load', async () => {
     map.setFilter('buildings-hi',['==','osm_id',-1]); });
   map.on('click','buildings-fill',e=>showBuilding(e.features[0], e.lngLat));
 
-  // toggles
-  const bind=(cb,layer)=>document.getElementById(cb).onchange=e=>
-    map.setLayoutProperty(layer,'visibility',e.target.checked?'visible':'none');
-  bind('t-thermal','thermal'); bind('t-build','buildings-fill');
-  document.getElementById('o-thermal').oninput=e=>map.setPaintProperty('thermal','raster-opacity',e.target.value/100);
+  // building-score toggle + opacity
+  document.getElementById('t-build').onchange=e=>
+    map.setLayoutProperty('buildings-fill','visibility',e.target.checked?'visible':'none');
   document.getElementById('o-build').oninput=e=>map.setPaintProperty('buildings-fill','fill-opacity',e.target.value/100);
 
+  refreshMaxBounds();
+  renderOverlayList();
   initSearch();
 });
 
@@ -425,6 +518,113 @@ function initSearch(){
   document.addEventListener('click',e=>{ if(!e.target.closest('.searchwrap')) list.style.display='none'; });
 }
 
+// ---- Thermal image registry + management (the "log") ----
+const OVERLAYS=[];   // {id,title,file,bounds,source,date,layerId,srcId,visible,opacity,session}
+
+function addOverlay(o, session){
+  const id=o.id||('img-'+Date.now());
+  const b=o.bounds; if(!b) return;
+  const srcId='src-'+id, layerId='ov-'+id;
+  if(map.getLayer(layerId)) return;
+  const opacity=(o.opacity!=null)?o.opacity:0.7;
+  const visible=o.visible!==false;
+  map.addSource(srcId,{type:'image', url:o.file,
+    coordinates:[[b.west,b.north],[b.east,b.north],[b.east,b.south],[b.west,b.south]]});
+  const before = map.getLayer('buildings-fill') ? 'buildings-fill' : undefined;
+  map.addLayer({id:layerId, type:'raster', source:srcId,
+    paint:{'raster-opacity':opacity,'raster-resampling':'nearest'},
+    layout:{visibility: visible?'visible':'none'}}, before);
+  OVERLAYS.push({...o, id, layerId, srcId, session:!!session, visible, opacity});
+}
+function removeOverlay(id){
+  const i=OVERLAYS.findIndex(o=>o.id===id); if(i<0) return;
+  const o=OVERLAYS[i];
+  if(map.getLayer(o.layerId)) map.removeLayer(o.layerId);
+  if(map.getSource(o.srcId)) map.removeSource(o.srcId);
+  if(o.session && o.file && o.file.startsWith('blob:')) URL.revokeObjectURL(o.file);
+  OVERLAYS.splice(i,1); renderOverlayList(); refreshMaxBounds();
+}
+function refreshMaxBounds(){
+  let w=B.west,s=B.south,e=B.east,n=B.north;
+  OVERLAYS.forEach(o=>{const b=o.bounds; w=Math.min(w,b.west); s=Math.min(s,b.south); e=Math.max(e,b.east); n=Math.max(n,b.north);});
+  map.setMaxBounds([[w-0.04,s-0.03],[e+0.04,n+0.03]]);
+}
+function fmt(n){ return Number(n).toFixed(5); }
+function renderOverlayList(){
+  const host=document.getElementById('overlay-list');
+  document.getElementById('ov-count').textContent = OVERLAYS.length?`(${OVERLAYS.length})`:'';
+  if(!OVERLAYS.length){ host.innerHTML='<p class="muted" style="font-size:12px">No thermal images loaded.</p>'; return; }
+  host.innerHTML=OVERLAYS.map(o=>{
+    const b=o.bounds;
+    const ref=[o.source,o.date].filter(Boolean).join(' · ')||'No reference given';
+    const file=o.session?'session image (not saved)':(o.file||'');
+    return `<div class="ov" data-id="${o.id}">
+      <div class="top">
+        <input type="checkbox" class="ov-vis" ${o.visible?'checked':''}>
+        <span class="name">${o.title||o.id}</span>
+        ${o.session?'<span class="badge">session</span>':''}
+        <button class="zoom">Zoom</button>
+      </div>
+      <div class="ref">${ref}</div>
+      <div class="meta">${file}<br>W ${fmt(b.west)} · S ${fmt(b.south)} · E ${fmt(b.east)} · N ${fmt(b.north)}</div>
+      <div class="orow">opacity <input type="range" class="ov-op" min="0" max="100" value="${Math.round(o.opacity*100)}">
+        ${o.session?'<button class="rm">remove</button>':''}</div>
+    </div>`;
+  }).join('');
+  host.querySelectorAll('.ov').forEach(el=>{
+    const id=el.dataset.id, o=OVERLAYS.find(x=>x.id===id);
+    el.querySelector('.ov-vis').onchange=e=>{ o.visible=e.target.checked;
+      map.setLayoutProperty(o.layerId,'visibility',o.visible?'visible':'none'); };
+    el.querySelector('.ov-op').oninput=e=>{ o.opacity=e.target.value/100;
+      map.setPaintProperty(o.layerId,'raster-opacity',o.opacity); };
+    el.querySelector('.zoom').onclick=()=>{ const b=o.bounds;
+      map.fitBounds([[b.west,b.south],[b.east,b.north]],{padding:40}); closeDrawer(); };
+    const rm=el.querySelector('.rm'); if(rm) rm.onclick=()=>removeOverlay(id);
+  });
+}
+
+// ---- Add-image loader ----
+function initLoader(){
+  const $=id=>document.getElementById(id);
+  let fileURL=null;
+  $('ai-file').onchange=e=>{
+    if(fileURL) URL.revokeObjectURL(fileURL);
+    const f=e.target.files[0]; fileURL=f?URL.createObjectURL(f):null;
+    if(f && !$('ai-title').value) $('ai-title').value=f.name.replace(/\.[^.]+$/,'');
+  };
+  $('ai-usemap').onclick=()=>{
+    const b=map.getBounds();
+    $('ai-w').value=fmt(b.getWest()); $('ai-s').value=fmt(b.getSouth());
+    $('ai-e').value=fmt(b.getEast()); $('ai-n').value=fmt(b.getNorth());
+  };
+  $('ai-add').onclick=()=>{
+    if(!fileURL){ toast('Choose an image file first.'); return; }
+    const w=parseFloat($('ai-w').value), s=parseFloat($('ai-s').value),
+          e=parseFloat($('ai-e').value), n=parseFloat($('ai-n').value);
+    if([w,s,e,n].some(isNaN) || e<=w || n<=s){ toast('Enter valid bounds (E>W, N>S).'); return; }
+    addOverlay({ id:'img-'+Date.now(), title:$('ai-title').value||'Untitled image',
+      file:fileURL, source:$('ai-source').value, date:$('ai-date').value,
+      bounds:{west:w,south:s,east:e,north:n}, opacity:0.7, visible:true }, true);
+    fileURL=null;
+    ['ai-file','ai-title','ai-source','ai-date','ai-w','ai-s','ai-e','ai-n'].forEach(i=>$(i).value='');
+    renderOverlayList(); refreshMaxBounds();
+    const o=OVERLAYS[OVERLAYS.length-1], b=o.bounds;
+    map.fitBounds([[b.west,b.south],[b.east,b.north]],{padding:40});
+    closeDrawer(); toast('Image added (session only).');
+  };
+}
+initLoader();
+
+// ---- Drawer open/close ----
+const drawer=document.getElementById('drawer'), scrim=document.getElementById('scrim');
+function openDrawer(){ drawer.classList.add('open'); scrim.classList.add('open'); drawer.setAttribute('aria-hidden','false'); }
+function closeDrawer(){ drawer.classList.remove('open'); scrim.classList.remove('open'); drawer.setAttribute('aria-hidden','true'); }
+document.getElementById('menu-btn').onclick=openDrawer;
+document.getElementById('drawer-close').onclick=closeDrawer;
+scrim.onclick=closeDrawer;
+document.getElementById('open-drawer-link').onclick=e=>{ e.preventDefault(); openDrawer(); };
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeDrawer(); });
+
 // ---- Collapsible panels ----
 function collapser(panelId, headId){
   document.getElementById(headId).addEventListener('click',()=>
@@ -432,9 +632,6 @@ function collapser(panelId, headId){
 }
 collapser('ctrl','ctrl-hd');
 collapser('legend','legend-hd');
-document.getElementById('ctrl-toggle').onclick=()=>{
-  const c=document.getElementById('ctrl'); c.style.display = (c.style.display==='none')?'':'none';
-};
 // On small screens start with panels collapsed so the map stays usable.
 if (window.matchMedia('(max-width:640px)').matches){
   document.getElementById('ctrl').classList.add('collapsed');

@@ -51,11 +51,22 @@ only — more accurate for big roofs).
      --tif kirkland-jour.tif --tif neighbour-jour.tif \
      --osm data/osm_buildings.json --out data/buildings_scored.geojson
    ```
-4. Rebuild the display overlay PNG + bounds for the new extent (reproject the
-   raster to a lon/lat box; update `data/overlay_bounds.json` and the `const B`
-   bounds in `index.html`). For multiple tiles, either stitch them into one PNG
-   or add one image source per tile.
-5. Bump `CACHE` in `service-worker.js`; update `docs/BLUEPRINT.md` extent notes.
+4. Rebuild the display overlay PNG(s) for the new extent (reproject each raster
+   to a lon/lat box). Then **add one entry per image to `data/overlays.json`**
+   (file, bounds, source, date) — the map and the ☰ drawer pick them up
+   automatically; no need to touch `index.html`. (You can preview a new image
+   first via the drawer's "Load a new image" loader before committing it.)
+5. Bump `CACHE` in `service-worker.js` (and add new PNGs to the SW `SHELL` for
+   offline use); update `docs/BLUEPRINT.md` extent notes.
+
+### `data/overlays.json` entry shape
+```json
+{ "id": "kirkland-2016-nuit", "title": "Kirkland — 2016 (night)",
+  "file": "data/overlay_nuit.png",
+  "bounds": { "west": -73.9177, "south": 45.4350, "east": -73.8288, "north": 45.4708 },
+  "source": "Ville de Montréal — Thermographie 2016 (nuit)", "date": "2016",
+  "opacity": 0.7, "visible": false }
+```
 
 ## Regenerate the display overlay (sketch)
 The overlay is the day raster reprojected to EPSG:4326 and exported as PNG, with

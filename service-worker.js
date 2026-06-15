@@ -1,6 +1,6 @@
 // Kirkland Thermography PWA — offline-capable service worker.
 // Bump CACHE on any data/app change to force a refresh.
-const CACHE = 'kirkland-thermo-v3';
+const CACHE = 'kirkland-thermo-v4';
 
 // Same-origin app shell + data. These are precached so the app works fully
 // offline once it has been opened online once.
@@ -8,6 +8,7 @@ const SHELL = [
   './',
   './index.html',
   './manifest.webmanifest',
+  './data/overlays.json',
   './data/overlay_jour.png',
   './data/buildings_scored.geojson',
   './icons/icon-192.png',

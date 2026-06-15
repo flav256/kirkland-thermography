@@ -14,12 +14,16 @@ Status legend: ✅ done · 🚧 in progress · ⬜ planned · 💡 idea
 - ✅ `score_buildings.py` made into a configurable, **multi-raster** CLI
 - ✅ Palette-distance threshold to reject blended / off-palette pixels
 - ✅ Project docs: blueprint, roadmap, coding strategy, data guide, issues
+- ✅ **Image registry** (`data/overlays.json`) + ☰ drawer log with per-image
+  visibility/opacity/references, and a runtime image **loader**
+- ✅ GitHub Pages **deploy workflow** (`.github/workflows/deploy-pages.yml`)
 
 ## Next (high value)
 - ⬜ **Coverage expansion**: ingest neighbouring boroughs' 2016 day rasters and a
-  wider OSM extract; re-run scoring (pipeline already supports `--tif` ×N).
-- ⬜ **Night raster**: add `thermographie-…-nuit.tif` as a second overlay +
-  toggle (day/night), and optionally a combined day–night score.
+  wider OSM extract; re-run scoring (pipeline already supports `--tif` ×N) and
+  add the new overlays to `data/overlays.json`.
+- ⬜ **Night raster**: add `thermographie-…-nuit.tif` as a registry overlay
+  (loadable today via the drawer) + optionally a combined day–night score.
 - ⬜ **Accuracy v2**: interior-pixel sampling with small-footprint fallback;
   per-building confidence from valid-pixel coverage ratio.
 - ⬜ **Basemap switcher**: satellite/aerial option to eyeball roofs.
